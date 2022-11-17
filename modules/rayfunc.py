@@ -2,39 +2,19 @@ import jdatetime # pip3 install jdatetime
 from subprocess import run as subrun
 from uuid import uuid4, UUID
 from re import compile as recompile
-from json import load as jsonload
+from json import load as jsonload, dumps as jsondumps
 import io
+from base64 import b64encode, b64decode
 
 
-def cfgtolink(cfg, inb=None):
-    if type(cfg) == str:
-        with open(cfg, "r") as f:
-            cfg = jsonload(f)
-    elif type(cfg) == io.TextIOWrapper:
-        cfg = jsonload(f)
-    if not isinstance(cfg, dict):
-        raise TypeError("Invalid Type")
-
-def _handle_http_inb(ss, xs):
-    final = {}
-    if 'headers' in ss[xs]:
-        if 'Host' in ss[xs]['headers']:
-            final["host"] = ss[xs]['headers']['Host'}
-    if 'host' in ss[xs]:
-        if type(ss[xs]['host']) == str:
-            final["host"] = ss[xs]['host'] 
-        else:
-            final["host"] = ss[xs]['host'][0]
-    if 'path' in ss:
-        final["path"] = ss['path']
-    if 'path' in ss[xs]:
-        final["path"] = ss[xs]['path']
-    return final
-
-def _if_exists(dic, key, default=None):
-    return dic[key] if key in dic else default
-
-def inbtolink(inb): # Based on documention found in www.v2ray.com
+def inbtolink(
+        inb,
+        name,
+        address,
+        uuid,
+        aid,
+        security,
+        ): # Based on documention found in www.v2ray.com
     link = {
             "port": "",
             "net": "",
@@ -43,8 +23,7 @@ def inbtolink(inb): # Based on documention found in www.v2ray.com
             "sni": "",
             "tls": "",
     }
-    # {"ps": "mobileaftab_H", "port": "443", "host": "aparat.com", "path": "/", "net": "ws", "scr": "none", "aid": "0", "v": "2", "add": "37.32.5.224", "id": "3fc88da7-c187-15d9-3545-6ec6c057244e", "sni": "", "tls": "", "type": ""}
-    protocol = _if_exists(inb, "protocol", "None")
+    protocol = _if_exists(inb, "protocol", "NULL")
     if protocol != "vmess" and protocol != "vless":
         raise Exception("Invalid protocol: " + protocol)
     if 'port' in inb:
@@ -77,17 +56,41 @@ def inbtolink(inb): # Based on documention found in www.v2ray.com
             link["tls"] = inb[ss]['security']
             link["sni"] = link["host"]
     if protocol == "vmess":
-        return {**link,
+        return ("vmess://" + b64encode(jsondumps({**link,
                 "v": "2",
-                "scr": "none",
                 "type": "",
-                "add": "",
-                "ps": "",
-                "id": "",
-                "aid": "",
-                }
-    return "
-    
+                "ps": name,
+                "add": address,
+                "id": uuid,
+                "aid": aid,
+                "scr": security,
+                }).encode()).decode())
+    return (f"vless://{uuid}@{address}:{link['port']}" +
+            f"?path={link['path']}&security={link['tls']}&encryption=none&host={link['host']}&type={link['net']}&sni={link['sni']}" +
+            f"#{name}")
+
+def cfgtolink( # Calls inbtolink for an inbound in cfg
+        cfg,
+        *args,
+        inb=None, # Index of the inbound. Only used when you have multiple inbounds in your cfg
+        ):
+    if type(cfg) == str:
+        with open(cfg, "r") as f:
+            cfg = jsonload(f)
+    elif type(cfg) == io.TextIOWrapper:
+        cfg = jsonload(f)
+    if not isinstance(cfg, dict):
+        raise TypeError("Invalid Type")
+    if 'inbound' in cfg:
+        return inbtolink(cfg['inbound'], *args)
+    if 'inbounds' in cfg:
+        if len(cfg['inbounds']) == 1:
+            inb = 0
+        if inb is None:
+            raise Exception("No inbounds or Multiple inbounds were found and no 'inb' parameter was given to the function")
+        return inbtolink(cfg['inbounds'][inb], *args)
+    raise Exception("No inbound found in configuration file")
+
 def issystemd():
     if subrun(['command', '-v', 'systemctl']).returncode != 0:
         return None
@@ -171,3 +174,23 @@ def stamptotime(date): # Converts timestamp to a datetime object
 
 def timetostamp(date): # Converts datetime object to timestamp
     return int(date.timestamp())
+
+def _handle_http_inb(ss, xs):
+    final = {}
+    if 'headers' in ss[xs]:
+        if 'Host' in ss[xs]['headers']:
+            final["host"] = ss[xs]['headers']['Host']
+    if 'host' in ss[xs]:
+        if type(ss[xs]['host']) == str:
+            final["host"] = ss[xs]['host'] 
+        else:
+            final["host"] = ss[xs]['host'][0]
+    if 'path' in ss:
+        final["path"] = ss['path']
+    if 'path' in ss[xs]:
+        final["path"] = ss[xs]['path']
+    return final
+
+def _if_exists(dic, key, default=None):
+    return dic[key] if key in dic else default
+
