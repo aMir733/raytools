@@ -6,6 +6,7 @@ from json import loads as jsonloads, dumps as jsondumps, load as jsonload, dump 
 from re import compile as recompile
 from argparse import ArgumentParser as argparse
 from base64 import b64encode
+import qrcode
 
 default_db = "customers.db"
 
@@ -71,28 +72,12 @@ def _output(level, message):
 
 def handle_add(*args, **kwargs):
     db = Database(kwargs["database"])
-    if not "@" in kwargs["user"]:
-        _output(0, "No @ in user: " + kwargs["user"])
-    kwargs["user"] = kwargs["user"].split("@")
-    if not kwargs["user"][0].isdigit():
-        _output(0, "count needs to be a number: " + kwargs["user"][0])
-    if not recompile(r'^[0-9A-Za-z\-\_]+$').match(kwargs["user"][1]):
-        _output(0, "username must be a string containing only: A-Z a-z 0-9 - _")
     if not kwargs["uuid"]:
         kwargs["uuid"] = make_uuid()
     if not isuuid(kwargs["uuid"]):
         _output(0, kwargs["uuid"] + " is not a valid UUID")
-    if not "@" in kwargs["date"]:
-        _output(0, "Invalid date: " + kwargs["date"])
-    if not kwargs["date"][0].isdigit():
-        _output(0, "days needs to be a number: " + kwargs["date"][0])
-    if kwargs["date"][1] == "now":
-        kwargs["date"][1] = timetostamp(timenow())
-    else:
-        kwargs["date"][1] = kwargs["date"][1].split("/")
-        if len(kwargs["date"][1]) != 3 or not all([i.isdigit() for i in kwargs["date"][1]]):
-            _output(0, "Invalid date: " + '/'.join(kwargs["date"][1]))
-        kwargs["date"][1] = timetostamp(timemake(kwargs["date"][1]))
+    kwargs["user"] = parse_username(kwargs["user"])
+    kwargs["date"] = parse_date(kwargs["date"])
     add_user(
             db,
             kwargs["user"][1],
@@ -122,7 +107,14 @@ def handle_get(*args, **kwargs):
     pass
 
 def handle_renew(*args, **kwargs):
-    pass
+    kwargs["date"] = parse_date(kwargs["date"])
+    add_payment(
+            db,
+            ("username", kwargs[1]),
+            date=kwargs["date"][1],
+            days=kwargs["date"][0],
+            paid=kwargs["paid"],
+            )
 
 def handle_disable(*args, **kwargs):
     disable_user(db, ("username", kwargs["user"]),)
@@ -131,7 +123,41 @@ def handle_enable(*args, **kwargs):
     enable_user(db, ("username", kwargs["user"]),)
 
 def handle_rerun():
-    pass
+
+def parse_username(username):
+    if not isinstance(username, str):
+        raise TypeError("Invalid type")
+    if not "@" in username:
+        _output(0, "No @ in user: " + username)
+    username = username.split("@")
+    if len(username) != 2:
+        _output(0, "Got too many '@' for username")
+    if not username[0].isdigit():
+        _output(0, "count needs to be a number: " + username[0])
+    if not recompile(r'^[0-9A-Za-z\-\_]+$').match(username[1]):
+        _output(0, "username must be a string containing only: A-Z a-z 0-9 - _")
+    return (*username)
+
+
+def parse_date(date):
+    if not isinstance(date, str):
+        raise TypeError("Invalid type")
+    if not "@" in date:
+        _output(0, "Invalid date: " + date)
+    date = date.split("@")
+    if len(username) != 2:
+        _output(0, "Got too many '@' for date")
+    if not date[0].isdigit():
+        _output(0, "'days' needs to be a number: " + date[0])
+    if date[1] == "now":
+        date[1] = timetostamp(timenow())
+    else:
+        date[1] = date[1].split("/")
+        if len(date[1]) != 3 or not all([i.isdigit() for i in date[1]]):
+            _output(0, "Invalid date: " + '/'.join(date[1]))
+        date[1] = timetostamp(timemake(date[1]))
+    return (*date)
+
 
 if __name__ == '__main__':
     parse_args()

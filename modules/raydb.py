@@ -93,10 +93,10 @@ def add_user(
 def add_payment(
         db,
         query, # An array or a tuple: (column name, query)
-        date=None,
-        days=None,
-        paid=None,
-        start=False,
+        date=None, # Payment date
+        days=None, # Length of subscription
+        paid=None, # How much the user has paid
+        start=False, # Is this the start of user's subscription
         nocommit=None,
         ):
     _check_query(query)
