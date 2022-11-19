@@ -6,16 +6,26 @@ from json import load as jsonload, dumps as jsondumps
 import io
 from base64 import b64encode, b64decode
 
+def formatlink(
+        link,
+        **kwargs,
+        ):
+    if not isinstance(link, str):
+        raise TypeError("Invalid Type")
+    matched = _matchlink(link, ["vmess", "vless"])
+    if not matched:
+        raise Exception("Invalid Link")
+    for key, value in kwargs.items():
+        if not isinstance(value, str):
+            raise TypeError("Invalid Type")
+        if not _isjsonsafe(value):
+            raise Exception("Value contains an illegal character: " + value)
+        link.replace("^{}^".format(key.upper()), value)
 
 def inbtolink(
         inb,
-        name,
-        address,
-        uuid,
-        aid,
-        security,
         nobase64=None,
-        ): # Based on documention found in www.v2ray.com
+        ): # Based on the documention found in www.v2ray.com
     link = {
             "port": "",
             "net": "",
@@ -60,24 +70,22 @@ def inbtolink(
         final = "vmess://" + jsondumps({**link,
                 "v": "2",
                 "type": "",
-                "ps": name,
-                "add": address,
-                "id": uuid,
-                "aid": aid,
-                "scr": security,
-                })
+                "ps": "^NAME^",
+                "add": "^ADDRESS^",
+                "id": "^UUID^",
+                "aid": "^AID^",
+                "scr": "^SCR^",
+                }, separators=(',', ':'))
         if nobase64:
             return final
         return b64encode(final.encode()).decode()
-    return (f"vless://{uuid}@{address}:{link['port']}" +
-            f"?path={link['path']}&security={link['tls']}&encryption=none&host={link['host']}&type={link['net']}&sni={link['sni']}" +
-            f"#{name}")
+    return ("vless://^UUID^@^ADDRESS^:{link['port']}" +
+            "?path={link['path']}&security={link['tls']}&encryption=none&host={link['host']}&type={link['net']}&sni={link['sni']}" +
+            "#^NAME^")
 
 def cfgtolink( # Calls inbtolink for an inbound in cfg
         cfg,
-        *args, # Passed down to inbtolink
         inb=None, # Index of the inbound. Only used when you have multiple inbounds in your cfg
-        **kwargs, # Passed down to inbtolink
         ):
     if type(cfg) == str:
         with open(cfg, "r") as f:
@@ -87,13 +95,13 @@ def cfgtolink( # Calls inbtolink for an inbound in cfg
     if not isinstance(cfg, dict):
         raise TypeError("Invalid Type")
     if 'inbound' in cfg:
-        return inbtolink(cfg['inbound'], *args, **kwargs)
+        return inbtolink(cfg['inbound'])
     if 'inbounds' in cfg:
         if len(cfg['inbounds']) == 1:
             inb = 0
         if inb is None:
             raise Exception("No inbounds or Multiple inbounds were found and no 'inb' parameter was given to the function")
-        return inbtolink(cfg['inbounds'][inb], *args, **kwargs)
+        return inbtolink(cfg['inbounds'][inb])
     raise Exception("No inbound found in configuration file")
 
 def issystemd():
@@ -179,6 +187,19 @@ def stamptotime(date): # Converts timestamp to a datetime object
 
 def timetostamp(date): # Converts datetime object to timestamp
     return int(date.timestamp())
+
+def _isjsonsafe(text):
+    illegals = '"\''
+    for i in illegals:
+        if i in text:
+            return None
+    return True
+
+def _matchword(text):
+    return recompile(r'^[0-9A-Za-z]$').match(text)
+
+def _matchlink(link, protocols):
+    return recompile(r'^(' + '|'.join(protocols) + r')://(.*)').match(link)
 
 def _handle_http_inb(ss, xs):
     final = {}

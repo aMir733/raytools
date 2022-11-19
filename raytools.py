@@ -34,18 +34,20 @@ def parse_args():
     # add arguments
     parser_add.add_argument('user', type=str, help=username_new_help)
     parser_add.add_argument('-c', '--count', type=int, default=1, help='Number of devices allowed for this user. Default: 1')
-    parser_add.add_argument('-d', '--date', type=str, default="now", help=date_help + ' Subscription\'s start date. Default: 30@now')
+    parser_add.add_argument('-d', '--date', type=str, default="now", help=date_help + ' Subscription\'s start date. Default: now')
     parser_add.add_argument('-y', '--days', type=int, default=30, help=days_help + ' Default: 30')
     parser_add.add_argument('-p', '--paid', type=int, default=0, help=paid_help + ' Default: 0')
     parser_add.add_argument('-u', '--uuid', type=str, default=None, help='UUID to use for this user. Default: Randomly generated')
     parser_add.add_argument('-t', '--telegram-id', type=int, default=None, help='User\'s Telegram ID. Default: None')
     # get arguments
     parser_get.add_argument('user', type=str, help=username_help)
-    parser_get.add_argument('server', type=str, help='Server\'s name in the database')
-    parser_get.add_argument('-i', '--ip-address', type=str, default=None, help='Overwrite server\'s IP address')
+    parser_get.add_argument('-s', '--server', type=str, default=None, help='Server\'s name')
+    parser_get.add_argument('-a', '--address', type=str, default=None, help='Overwrite server\'s address')
+    parser_get.add_argument('-n', '--name', type=str, default=None, help='Overwrite server\'s name (ps)')
+    parser_get.add_argument('-c', '--security', type=str, default=None, help="Overwrite security (sc). Default: 'none'")
     # renew arguments
     parser_renew.add_argument('user', type=str, help=username_help)
-    parser_renew.add_argument('-d', '--date', type=str, default="now", help=date_help + ' Renew date. Default: 30@now')
+    parser_renew.add_argument('-d', '--date', type=str, default="now", help=date_help + ' Renew date. Default: now')
     parser_renew.add_argument('-y', '--days', type=int, default=30, help=days_help + ' Default: 30')
     parser_renew.add_argument('-p', '--paid', type=int, default=0, help=paid_help + ' Default: 0')
     # disable arguments
@@ -56,7 +58,7 @@ def parse_args():
     # addsrv arguments
     parser_addsrv.add_argument('configuration', type=str, help=username_help)
     parser_addsrv.add_argument('-n', '--name', type=str, required=True, help="Could be anything. (Required)")
-    parser_addsrv.add_argument('-a', '--address', type=str, required=True, help="IP address or domain. (Required)")
+    parser_addsrv.add_argument('-a', '--address', type=str, required=True, help="address. (Required)")
     parser_addsrv.add_argument('-i', '--inbound-index', type=str, default=None, help="Index of the inbound. Only used if you have several inbounds in your configuration file.")
 
     parser_add.set_defaults(func=handle_add)
@@ -114,7 +116,19 @@ def handle_add(*args, **kwargs):
     db.cun.commit()
 
 def handle_get(*args, **kwargs):
-    pass
+    db = Database(kwargs["database"])
+    username, count, uuid, disabled = get_user(db, ("username", kwargs["user"]))
+    print(f"username: {username}\ncount: {count}\nuuid: {uuid}\n disabled: {disabled}")
+    if kwargs["server"]:
+        address, link = get_server(db, ("name", kwargs["server"]))
+        print(formatlink(
+            link,
+            name=kwargs["name"] if kwargs["name"] else kwargs["server"],
+            address=kwargs["address"] if kwargs["address"] else address,
+            scr=kwargs["security"] if kwargs["security"] else "none",
+            uuid=uuid,
+            aid=0,
+            ))
 
 def handle_renew(*args, **kwargs):
     db = Database(kwargs["database"])
@@ -141,16 +155,6 @@ def handle_restart():
 
 def handle_addsrv(*args, **kwargs):
     db = Database(kwargs["database"])
-    link = cfgtolink(
-            kwargs["configuration"],
-            "^NAME^",
-            "^ADDRESS^",
-            "^UUID^",
-            "^AID^",
-            "^SECURITY^",
-            inb=kwargs["inbound_index"],
-            nobase64=True,
-            )
     add_server(
             db,
             kwargs["name"],

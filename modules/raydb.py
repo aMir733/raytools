@@ -36,17 +36,16 @@ CREATE TABLE IF NOT EXISTS servers (
 id INTEGER PRIMARY KEY,
 name TEXT NOT NULL UNIQUE,
 address TEXT NOT NULL,
-protocol TEXT NOT NULL CHECK (protocol = 'vmess' OR protocol = 'vless'),
-link TEXT
+link TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS rservers (
 id INTEGER PRIMARY KEY,
 address TEXT NOT NULL UNIQUE
 );
 """
-        self.con = sqlite3.connect(db_path)
-        self.cur = Database.con.cursor()
-        self.cur.executescript(sqlite3_create_tables)
+        Database.con = sqlite3.connect(db_path)
+        Database.cur = Database.con.cursor()
+        Database.cur.executescript(sqlite3_create_tables)
 
 def make_config(
         clients, # List of clients to add to configuration: [(x,y,z),(a,b,c)]
@@ -139,8 +138,7 @@ def add_server(
         db,
         name,
         address,
-        protocol=None,
-        link=None,
+        link,
         nocommit=None,
         ):
     if isinstance(link, dict):
@@ -155,7 +153,7 @@ def add_server(
     if not protocol:
         raise TypeError("Protocol was not specified")
     db.cur.execute(
-            "INSERT INTO servers (name, address, type, link) VALUES (?, ?, ?, ?)",
+            "INSERT INTO servers (name, address, link) VALUES (?, ?, ?)",
             (name, address, protocol, link)
             )
     if not nocommit:
@@ -207,7 +205,19 @@ def get_users( # Returns: [(1,1,1),(2,2,2)]
 
 def get_user(*args, **kwargs): # Returns (1,1,1)
     res = get_users(*args, **{**kwargs, "size": 1})
+    print(len(res))
+    print(res)
     return res[0] if res else res
+
+def get_server(
+        db,
+        query,
+        ):
+    _check_query(query)
+    return db.cur.execute(
+            "SELECT address, link FROM servers WHERE {} = ?".format(query[0]),
+            (query[1],)
+            ).fetchone()
 
 def disable_user(
         db,
