@@ -1,4 +1,4 @@
-from re import compile as recompile
+from re import compile as recompile, sub as resub
 from json import load as jsonload, dump as jsondump
 
 """
@@ -35,9 +35,13 @@ FOREIGN KEY(user_id) REFERENCES users(id)
 CREATE TABLE IF NOT EXISTS servers (
 id INTEGER PRIMARY KEY,
 name TEXT NOT NULL UNIQUE,
-ip TEXT NOT NULL,
-type TEXT NOT NULL CHECK (type = 'vmess' OR type = 'vless' OR type = 'raytools'),
+address TEXT NOT NULL,
+protocol TEXT NOT NULL CHECK (protocol = 'vmess' OR protocol = 'vless'),
 link TEXT
+);
+CREATE TABLE IF NOT EXISTS rservers (
+id INTEGER PRIMARY KEY,
+address TEXT NOT NULL UNIQUE
 );
 """
         self.con = sqlite3.connect(db_path)
@@ -127,6 +131,32 @@ def add_tg( # Links users in telegram table to a user in users table
     db.cur.execute(
             "INSERT INTO telegram (user_id, tg_id) VALUES (?, ?)",
             (tg_id, res[0]),
+            )
+    if not nocommit:
+        db.con.commit()
+
+def add_srv(
+        db,
+        name,
+        address,
+        protocol=None,
+        link=None,
+        nocommit=None,
+        ):
+    if isinstance(link, dict):
+        link = jsondumps(link)
+    if link != None and not isinstance(link, str):
+        raise TypeError("Invalid Type")
+    if link:
+        matched = recompile(r'^(vmess|vless)://(.*)').match(link)
+        if len(matched) == 3:
+            protocol = matched[1]
+            link = matched[2]
+    if not protocol:
+        raise TypeError("Protocol was not specified")
+    db.cur.execute(
+            "INSERT INTO servers (name, address, type, link) VALUES (?, ?, ?, ?)",
+            (name, address, protocol, link)
             )
     if not nocommit:
         db.con.commit()

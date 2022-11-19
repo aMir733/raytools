@@ -14,6 +14,7 @@ def inbtolink(
         uuid,
         aid,
         security,
+        nobase64=None,
         ): # Based on documention found in www.v2ray.com
     link = {
             "port": "",
@@ -56,7 +57,7 @@ def inbtolink(
             link["tls"] = inb[ss]['security']
             link["sni"] = link["host"]
     if protocol == "vmess":
-        return ("vmess://" + b64encode(jsondumps({**link,
+        final = "vmess://" + jsondumps({**link,
                 "v": "2",
                 "type": "",
                 "ps": name,
@@ -64,15 +65,19 @@ def inbtolink(
                 "id": uuid,
                 "aid": aid,
                 "scr": security,
-                }).encode()).decode())
+                })
+        if nobase64:
+            return final
+        return b64encode(final.encode()).decode()
     return (f"vless://{uuid}@{address}:{link['port']}" +
             f"?path={link['path']}&security={link['tls']}&encryption=none&host={link['host']}&type={link['net']}&sni={link['sni']}" +
             f"#{name}")
 
 def cfgtolink( # Calls inbtolink for an inbound in cfg
         cfg,
-        *args,
+        *args, # Passed down to inbtolink
         inb=None, # Index of the inbound. Only used when you have multiple inbounds in your cfg
+        **kwargs, # Passed down to inbtolink
         ):
     if type(cfg) == str:
         with open(cfg, "r") as f:
@@ -82,13 +87,13 @@ def cfgtolink( # Calls inbtolink for an inbound in cfg
     if not isinstance(cfg, dict):
         raise TypeError("Invalid Type")
     if 'inbound' in cfg:
-        return inbtolink(cfg['inbound'], *args)
+        return inbtolink(cfg['inbound'], *args, **kwargs)
     if 'inbounds' in cfg:
         if len(cfg['inbounds']) == 1:
             inb = 0
         if inb is None:
             raise Exception("No inbounds or Multiple inbounds were found and no 'inb' parameter was given to the function")
-        return inbtolink(cfg['inbounds'][inb], *args)
+        return inbtolink(cfg['inbounds'][inb], *args, **kwargs)
     raise Exception("No inbound found in configuration file")
 
 def issystemd():
