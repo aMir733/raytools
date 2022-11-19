@@ -135,7 +135,7 @@ def add_tg( # Links users in telegram table to a user in users table
     if not nocommit:
         db.con.commit()
 
-def add_srv(
+def add_server(
         db,
         name,
         address,
@@ -158,6 +158,15 @@ def add_srv(
             "INSERT INTO servers (name, address, type, link) VALUES (?, ?, ?, ?)",
             (name, address, protocol, link)
             )
+    if not nocommit:
+        db.con.commit()
+
+def add_rserver(
+        db,
+        address,
+        nocommit=None,
+        ):
+    db.cur.execute("INSERT INTO rservers (address) VALUES (?)", address)
     if not nocommit:
         db.con.commit()
 

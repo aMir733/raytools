@@ -151,7 +151,7 @@ def handle_addsrv(*args, **kwargs):
             inb=kwargs["inbound_index"],
             nobase64=True,
             )
-    add_srv(
+    add_server(
             db,
             kwargs["name"],
             kwargs["address"],
