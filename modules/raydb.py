@@ -109,7 +109,7 @@ def add_payment(
             ).fetchmany(size=2)
     res = _return_one(res)
     db.cur.execute(
-            "INSERT INTO dates (user_id, date, days, paid, start) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO sales (user_id, date, days, paid, start) VALUES (?, ?, ?, ?, ?)",
             (res[0], date, days, paid, start),
             )
     if not nocommit:
@@ -141,20 +141,14 @@ def add_server(
         link,
         nocommit=None,
         ):
-    if isinstance(link, dict):
-        link = jsondumps(link)
-    if link != None and not isinstance(link, str):
+    if not isinstance(link, str):
         raise TypeError("Invalid Type")
-    if link:
-        matched = recompile(r'^(vmess|vless)://(.*)').match(link)
-        if len(matched) == 3:
-            protocol = matched[1]
-            link = matched[2]
-    if not protocol:
-        raise TypeError("Protocol was not specified")
+    #matched = recompile(r'^(vmess|vless)://(.*)').match(link)
+    #if not matched or len(matched) != 3:
+    #    raise ValueError("Invalid Link")
     db.cur.execute(
             "INSERT INTO servers (name, address, link) VALUES (?, ?, ?)",
-            (name, address, protocol, link)
+            (name, address, link)
             )
     if not nocommit:
         db.con.commit()
@@ -198,26 +192,27 @@ def get_users( # Returns: [(1,1,1),(2,2,2)]
     _check_query(query)
     res = db.cur.execute("SELECT * FROM users WHERE {} LIKE ?".format(query[0]), (query[1],))
     if size == 0:
-        return res.fetchall()
-    #if size == 1: <--- commented: Inconsistent return value
-    #    return res.fetchone()
-    return res.fetchmany(size=size)
+        res = res.fetchall()
+    res = res.fetchmany(size=size)
+    if not res:
+        raise ValueError("User not found")
+    return res
 
 def get_user(*args, **kwargs): # Returns (1,1,1)
-    res = get_users(*args, **{**kwargs, "size": 1})
-    print(len(res))
-    print(res)
-    return res[0] if res else res
+    return get_users(*args, **{**kwargs, "size": 1})[0]
 
 def get_server(
         db,
         query,
         ):
     _check_query(query)
-    return db.cur.execute(
+    res = db.cur.execute(
             "SELECT address, link FROM servers WHERE {} = ?".format(query[0]),
             (query[1],)
             ).fetchone()
+    if not res:
+        raise ValueError("Server not found")
+    return res
 
 def disable_user(
         db,

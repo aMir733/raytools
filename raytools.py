@@ -56,10 +56,10 @@ def parse_args():
     parser_enable.add_argument('user', type=str, help=username_help)
     # restart arguments
     # addsrv arguments
-    parser_addsrv.add_argument('configuration', type=str, help=username_help)
-    parser_addsrv.add_argument('-n', '--name', type=str, required=True, help="Could be anything. (Required)")
-    parser_addsrv.add_argument('-a', '--address', type=str, required=True, help="address. (Required)")
-    parser_addsrv.add_argument('-i', '--inbound-index', type=str, default=None, help="Index of the inbound. Only used if you have several inbounds in your configuration file.")
+    parser_addsrv.add_argument('link', type=str, help="Path to your configuration file OR a vmess or vless link with these variables inside it: ^NAME^, ^ADDRESS^, ^UUID^, ^AID^(vmess only), ^SCR^(vmess only)")
+    parser_addsrv.add_argument('-n', '--name', type=str, required=True, help="A unique name for your server. (Required)")
+    parser_addsrv.add_argument('-a', '--address', type=str, required=True, help="Server's address. (Required)")
+    parser_addsrv.add_argument('-i', '--inbound-index', type=str, default=None, help="Only required if you have several inbounds in your configuration file. Default: None")
 
     parser_add.set_defaults(func=handle_add)
     parser_get.set_defaults(func=handle_get)
@@ -71,17 +71,16 @@ def parse_args():
     args = parser.parse_args()
     args.__dict__.pop('func')(**vars(args))
 
-
-def _output(level, message):
-    if level == 0: # Error
+def _output(level, message, print_help=None):
+    if print_help:
         parser.print_help()
-        print("Error:\n\t")
-        print(message)
+    if level == 0:
+        print("[ERROR]: " + message)
         exit(1)
-    elif level == 1: # Warning
-        print("[Warning]: " + message)
-    elif level == 2: # Info
-        print("[Info]: " + message)
+    elif level == 1:
+        print("[WARNING]: " + message)
+    elif level == 2:
+        print("[INFO]: " + message)
 
 def handle_add(*args, **kwargs):
     db = Database(kwargs["database"])
@@ -106,21 +105,27 @@ def handle_add(*args, **kwargs):
             start=True,
             nocommit=True,
             )
-    if telegram_id:
+    if kwargs["telegram_id"]:
         add_tg(
                 db,
                 ("username", kwargs["user"]),
                 telegram_id,
                 nocommit=True,
                 )
-    db.cun.commit()
+    db.con.commit()
 
 def handle_get(*args, **kwargs):
     db = Database(kwargs["database"])
-    username, count, uuid, disabled = get_user(db, ("username", kwargs["user"]))
-    print(f"username: {username}\ncount: {count}\nuuid: {uuid}\n disabled: {disabled}")
+    try:
+        user_id, username, count, uuid, disabled = get_user(db, ("username", kwargs["user"]))
+    except ValueError:
+        _output(0, "User not found")
+    _output(2, f"\nuser_id: {user_id}\nusername: {username}\ncount: {count}\nuuid: {uuid}\ndisabled: {disabled}")
     if kwargs["server"]:
-        address, link = get_server(db, ("name", kwargs["server"]))
+        try:
+            address, link = get_server(db, ("name", kwargs["server"]))
+        except ValueError:
+            _output(0, "Server was either not found or has a NULL value")
         print(formatlink(
             link,
             name=kwargs["name"] if kwargs["name"] else kwargs["server"],
@@ -155,13 +160,21 @@ def handle_restart():
 
 def handle_addsrv(*args, **kwargs):
     db = Database(kwargs["database"])
+    try:
+        kwargs["link"] = readlink(kwargs["link"])
+    except ValueError:
+        try:
+            with open(kwargs["link"], "r") as f:
+                kwargs["link"] = cfgtolink(f, inb=kwargs["inbound_index"])
+        except FileNotFoundError:
+            _output(0, "Could not find configuration file in: " + kwargs["link"])
+    print(kwargs["link"])
     add_server(
             db,
             kwargs["name"],
             kwargs["address"],
-            link=link,
+            kwargs["link"],
             )
-    pass
 
 def parse_date(date):
     if not isinstance(date, str):

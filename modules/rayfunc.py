@@ -1,4 +1,5 @@
 import jdatetime # pip3 install jdatetime
+from zoneinfo import ZoneInfo
 from subprocess import run as subrun
 from uuid import uuid4, UUID
 from re import compile as recompile
@@ -6,25 +7,49 @@ from json import load as jsonload, dumps as jsondumps
 import io
 from base64 import b64encode, b64decode
 
+def writelink(
+        link, # ("vmess", "{}") OR ("vmess", {}) OR ("vless", "...")
+        ):
+    if not link or len(link) != 2:
+        raise ValueError("Invalid Input")
+    if isinstance(link[1], dict):
+        link[1] = jsondumps(link[1], separators=(',', ':'))
+    if not all([isinstance(i, str) for i in link]):
+        raise TypeError("Invalid Type")
+    if link[0] != "vmess" and link[0] != "vless":
+        raise ValueError("Invalid Protocol")
+    if link[0] == "vmess":
+        link[1] = b64encode(link[1].encode()).decode()
+    return '://'.join(link)
+
+def readlink(
+        link,
+        ):
+    if not isinstance(link, str):
+        raise TypeError("Invalid Type")
+    matched = matchlink(link, ["vmess", "vless"])
+    if not matched or len(matched) != 3:
+        raise ValueError("Invalid Link or Protocol")
+    if matched[1] == "vmess":
+        matched[2] = b64decode(matched[2]).decode()
+    return (matched[1], matched[2])
+
 def formatlink(
         link,
         **kwargs,
         ):
-    if not isinstance(link, str):
-        raise TypeError("Invalid Type")
-    matched = _matchlink(link, ["vmess", "vless"])
-    if not matched:
-        raise Exception("Invalid Link")
+    link = readlink(link)
     for key, value in kwargs.items():
         if not isinstance(value, str):
-            raise TypeError("Invalid Type")
+            value = str(value)
         if not _isjsonsafe(value):
             raise Exception("Value contains an illegal character: " + value)
+        print("^{}^".format(key.upper()), value)
         link.replace("^{}^".format(key.upper()), value)
+    return link
 
 def inbtolink(
         inb,
-        nobase64=None,
         ): # Based on the documention found in www.v2ray.com
     link = {
             "port": "",
@@ -67,7 +92,7 @@ def inbtolink(
             link["tls"] = inb[ss]['security']
             link["sni"] = link["host"]
     if protocol == "vmess":
-        final = "vmess://" + jsondumps({**link,
+        return writelink("vmess", jsondumps({**link,
                 "v": "2",
                 "type": "",
                 "ps": "^NAME^",
@@ -76,11 +101,8 @@ def inbtolink(
                 "aid": "^AID^",
                 "scr": "^SCR^",
                 }, separators=(',', ':'))
-        if nobase64:
-            return final
-        return b64encode(final.encode()).decode()
-    return ("vless://^UUID^@^ADDRESS^:{link['port']}" +
-            "?path={link['path']}&security={link['tls']}&encryption=none&host={link['host']}&type={link['net']}&sni={link['sni']}" +
+    return ("vless", f"^UUID^@^ADDRESS^:{link['port']}" +
+            f"?path={link['path']}&security={link['tls']}&encryption=none&host={link['host']}&type={link['net']}&sni={link['sni']}" +
             "#^NAME^")
 
 def cfgtolink( # Calls inbtolink for an inbound in cfg
@@ -91,7 +113,7 @@ def cfgtolink( # Calls inbtolink for an inbound in cfg
         with open(cfg, "r") as f:
             cfg = jsonload(f)
     elif type(cfg) == io.TextIOWrapper:
-        cfg = jsonload(f)
+        cfg = jsonload(cfg)
     if not isinstance(cfg, dict):
         raise TypeError("Invalid Type")
     if 'inbound' in cfg:
@@ -198,7 +220,7 @@ def _isjsonsafe(text):
 def _matchword(text):
     return recompile(r'^[0-9A-Za-z]$').match(text)
 
-def _matchlink(link, protocols):
+def matchlink(link, protocols):
     return recompile(r'^(' + '|'.join(protocols) + r')://(.*)').match(link)
 
 def _handle_http_inb(ss, xs):
