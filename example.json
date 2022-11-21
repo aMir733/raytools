@@ -1,0 +1,36 @@
+{
+  "log": {
+    "access": "/var/log/ray/access.log",
+    "error": "/var/log/ray/error.log",
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "listen": "/dev/shm/caddy-ws.socket,0666",
+      "protocol": "vmess",
+      "settings": {
+        "clients": [
+          {
+            "email": "admin@raytools",
+            "level": 1,
+            "alterId": 0
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "path": "/"
+      }
+    }
+  ],
+  "outbound": {
+    "protocol": "freedom",
+    "settings": {}
+  },
+  "dns": {
+    "servers": [
+      "1.1.1.1",
+      "8.8.8.8"
+    ]
+  }
+}

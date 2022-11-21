@@ -3,24 +3,69 @@ from zoneinfo import ZoneInfo
 from subprocess import run as subrun
 from uuid import uuid4, UUID
 from re import compile as recompile
-from json import load as jsonload, dumps as jsondumps
+from json import load as jsonload, loads as jsonloads, dumps as jsondumps
 import io
 from base64 import b64encode, b64decode
 
-def writelink(
-        link, # ("vmess", "{}") OR ("vmess", {}) OR ("vless", "...")
-        ):
-    if not link or len(link) != 2:
-        raise ValueError("Invalid Input")
-    if isinstance(link[1], dict):
-        link[1] = jsondumps(link[1], separators=(',', ':'))
-    if not all([isinstance(i, str) for i in link]):
+def anytojson(inp):
+    if isinstance(inp, str):
+        try:
+            return jsonloads(inp)
+        except:
+            with open(inp, "r") as f:
+                return jsonload(f)
+    if isopenedfile(inp):
+        return jsonload(inp)
+    if not isinstance(cfg, dict):
         raise TypeError("Invalid Type")
-    if link[0] != "vmess" and link[0] != "vless":
-        raise ValueError("Invalid Protocol")
-    if link[0] == "vmess":
-        link[1] = b64encode(link[1].encode()).decode()
-    return '://'.join(link)
+    return inp
+
+def populatecfg(
+        clients, # [(x,y,z),(a,b,c)] -> (user_id, count, uuid)
+        cfg, # {} OR "{}" OR /file/path OR io.TextIOWrapper
+        ):
+    cfg = anytojson(cfg)
+    checkcfg(cfg)
+    if not isinstance(clients, list) and not isinstance(clients, tuple):
+        raise TypeError("Invalid type for clients. Only lists or tuples are acceptable")
+    passed = None
+    if 'inbound' in cfg:
+        cfg['inbounds'] = [cfg.pop("inbound")]
+    for inbound in cfg['inbounds']:
+        if inbound['protocol'] != 'vmess' and inbound['protocol'] != 'vless':
+            continue
+        default_client = inbound['settings']['clients'][0]
+        if default_client['email'] != "admin@raytools":
+            continue
+        passed = True
+        max_digits = len(str(max(clients)[0]))
+        for client in clients:
+            inbound['settings']['clients'].append({
+                **default_client,
+                "id": client[2], # uuid
+                "email": "{}@{}".format(
+                    str(client[1]),
+                    str(client[0]).zfill(max_digits),
+                    )
+            })
+    if not passed:
+        raise ValueError("Could not find an appropriate inbound to use")
+    return cfg
+
+def writelink(
+        protocol,
+        link, # {} OR "{}"
+        ):
+    if isinstance(link, dict):
+        link = jsondumps(link, separators=(',', ':'))
+    if not isinstance(link, str):
+        raise TypeError("Invalid Type")
+    if protocol != "vmess" and protocol != "vless":
+        raise ValueError("Null or Invalid Protocol")
+    return "{}://{}".format(
+            protocol,
+            b64encode(link.encode()).decode() if protocol == "vmess" else link,
+            )
 
 def readlink(
         link,
@@ -28,25 +73,27 @@ def readlink(
     if not isinstance(link, str):
         raise TypeError("Invalid Type")
     matched = matchlink(link, ["vmess", "vless"])
-    if not matched or len(matched) != 3:
+    if len(matched) != 2:
         raise ValueError("Invalid Link or Protocol")
-    if matched[1] == "vmess":
-        matched[2] = b64decode(matched[2]).decode()
-    return (matched[1], matched[2])
+    return (
+            matched[0],
+            b64decode(matched[1]).decode() if matched[0] == "vmess" else matched[1]
+            )
 
 def formatlink(
         link,
         **kwargs,
         ):
-    link = readlink(link)
+    if not isinstance(link, str):
+        raise TypeError("Invalid Type")
+    protocol, link = readlink(link)
     for key, value in kwargs.items():
         if not isinstance(value, str):
             value = str(value)
         if not _isjsonsafe(value):
             raise Exception("Value contains an illegal character: " + value)
-        print("^{}^".format(key.upper()), value)
-        link.replace("^{}^".format(key.upper()), value)
-    return link
+        link = link.replace("^{}^".format(key.upper()), value)
+    return writelink(protocol, link)
 
 def inbtolink(
         inb,
@@ -100,22 +147,17 @@ def inbtolink(
                 "id": "^UUID^",
                 "aid": "^AID^",
                 "scr": "^SCR^",
-                }, separators=(',', ':'))
+                }, separators=(',', ':')))
     return ("vless", f"^UUID^@^ADDRESS^:{link['port']}" +
-            f"?path={link['path']}&security={link['tls']}&encryption=none&host={link['host']}&type={link['net']}&sni={link['sni']}" +
-            "#^NAME^")
+        f"?path={link['path']}&security={link['tls']}&encryption=none&host={link['host']}&type={link['net']}&sni={link['sni']}" +
+        "#^NAME^")
 
 def cfgtolink( # Calls inbtolink for an inbound in cfg
         cfg,
         inb=None, # Index of the inbound. Only used when you have multiple inbounds in your cfg
         ):
-    if type(cfg) == str:
-        with open(cfg, "r") as f:
-            cfg = jsonload(f)
-    elif type(cfg) == io.TextIOWrapper:
-        cfg = jsonload(cfg)
-    if not isinstance(cfg, dict):
-        raise TypeError("Invalid Type")
+    cfg = anytojson(cfg)
+    checkcfg(cfg)
     if 'inbound' in cfg:
         return inbtolink(cfg['inbound'])
     if 'inbounds' in cfg:
@@ -220,8 +262,18 @@ def _isjsonsafe(text):
 def _matchword(text):
     return recompile(r'^[0-9A-Za-z]$').match(text)
 
+def isopenedfile(obj):
+    return isinstance(obj, io.TextIOWrapper)
+
+def checkcfg(cfg):
+    if not 'inbound' in cfg and not 'inbounds' in cfg:
+        raise ValueError("No 'inbounds' found in configuration file")
+    if 'inbound' in cfg and 'inbounds' in cfg:
+        raise ValueError("Cannot have both 'inbound' and 'inbounds' entry in configuration file")
+
 def matchlink(link, protocols):
-    return recompile(r'^(' + '|'.join(protocols) + r')://(.*)').match(link)
+    res = recompile(r'^(' + '|'.join(protocols) + r')://(.+)').match(link)
+    return res.groups() if res else ()
 
 def _handle_http_inb(ss, xs):
     final = {}

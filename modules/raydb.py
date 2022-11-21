@@ -47,38 +47,6 @@ address TEXT NOT NULL UNIQUE
         Database.cur = Database.con.cursor()
         Database.cur.executescript(sqlite3_create_tables)
 
-def make_config(
-        clients, # List of clients to add to configuration: [(x,y,z),(a,b,c)]
-        path, # Path to your configuration file
-        dest="config_new.json", # Where to store the new configuration file
-        ):
-    if type(clients) != list:
-        raise TypeError("Invalid type for clients. Only lists are acceptable")
-    with open(path, "r") as f:
-        js = jsonload(f)
-    if not 'inbounds' in js:
-        raise KeyError("Could not find the 'inbounds' entry in {} . If you're using the 'inbound' keyword please change it to 'inbounds'".format(path))
-    passed = None
-    for inbound in js['inbounds']:
-        if inbound['protocol'] != 'vmess' and inbound['protocol'] != 'vless':
-            continue
-        default_client = inbound['settings']['clients'][0]
-        if default_client['email'] != "v2ray_tools":
-            continue
-        passed = True
-        max_digits = len(str(max(clients)[0]))
-        for client in clients:
-            inbound['settings']['clients'].append({
-                **default_client,
-                "id": client[3], # uuid
-                "email": str(client[0]).zfill(max_digits), # email
-            })
-    if passed != True:
-        raise ValueError("Could not find an appropriate inbound")
-    with open(dest, "w") as f:
-        jsondump(js, f)
-    return dest
-
 def add_user(
         db, # Database object
         username,
@@ -95,18 +63,14 @@ def add_user(
 
 def add_payment(
         db,
-        query, # An array or a tuple: (column name, query)
+        query=None,
         date=None, # Payment date
         days=None, # Length of subscription
         paid=None, # How much the user has paid
         start=False, # Is this the start of user's subscription
         nocommit=None,
         ):
-    _check_query(query)
-    res = db.cur.execute(
-            "SELECT id FROM users WHERE {} LIKE ?".format(query[0]),
-            (query[1],),
-            ).fetchmany(size=2)
+    res = select(db, "users", columns=("id"), query=query).fetchmany(size=2)
     res = _return_one(res)
     db.cur.execute(
             "INSERT INTO sales (user_id, date, days, paid, start) VALUES (?, ?, ?, ?, ?)",
@@ -117,15 +81,11 @@ def add_payment(
 
 def add_tg( # Links users in telegram table to a user in users table
         db,
-        query,
         tg_id,
+        query=None,
         nocommit=None,
         ):
-    _check_query(query)
-    res = db.cur.execute(
-            "SELECT id FROM users WHERE {} LIKE ?".format(query[0]),
-            (query[1],),
-            ).fetchmany(size=2)
+    res = select(db, "users", columns=("id"), query=query).fetchmany(size=2)
     res = _return_one(res)
     db.cur.execute(
             "INSERT INTO telegram (user_id, tg_id) VALUES (?, ?)",
@@ -143,7 +103,7 @@ def add_server(
         ):
     if not isinstance(link, str):
         raise TypeError("Invalid Type")
-    #matched = recompile(r'^(vmess|vless)://(.*)').match(link)
+    #matched = recompile(r'^(vmess|vless)://(.+)').match(link)
     #if not matched or len(matched) != 3:
     #    raise ValueError("Invalid Link")
     db.cur.execute(
@@ -162,68 +122,51 @@ def add_rserver(
     if not nocommit:
         db.con.commit()
 
-def get_tg( # Returns the user id associated with query
+def get_tg(
         db,
-        query,
-        full=None, # If true it will return every column instead of just id
+        **kwargs,
         ):
-    _check_query(query)
-    if full:
-        cmd = "SELECT * FROM users WHERE telegram.{} = ?"
-    else:
-        cmd = "SELECT user_id FROM telegram WHERE {} = ?"
-    res = db.cur.execute(
-            cmd.format(query[0]),
-            (query[1],)
-            ).fetchmany(size=2)
-    res = _return_one(res)
-    return res if full else res[0]
-
-def getall_users(
-        db, # Database object
-        ):
-    return db.cur.execute("SELECT * FROM users").fetchall()
+    res = select(db, "telegram", **kwargs).fetchmany(size=2)
+    return _return_one(res)
 
 def get_users( # Returns: [(1,1,1),(2,2,2)]
         db, # Database object
-        query, # An array or a tuple: (column name, query)
         size=1,
+        **kwargs,
         ):
-    _check_query(query)
-    res = db.cur.execute("SELECT * FROM users WHERE {} LIKE ?".format(query[0]), (query[1],))
+    res = select(db, "users", **kwargs)
     if size == 0:
         res = res.fetchall()
     res = res.fetchmany(size=size)
     if not res:
-        raise ValueError("User not found")
+        raise IndexError("Emtpy result")
     return res
 
-def get_user(*args, **kwargs): # Returns (1,1,1)
+def getall_users(*args, **kwargs):
+    return get_users(*args, **{**kwargs, "size": 0})
+
+def get_user(*args, **kwargs):
     return get_users(*args, **{**kwargs, "size": 1})[0]
 
 def get_server(
         db,
-        query,
+        **kwargs,
         ):
-    _check_query(query)
-    res = db.cur.execute(
-            "SELECT address, link FROM servers WHERE {} = ?".format(query[0]),
-            (query[1],)
-            ).fetchone()
+    res = select(db, "servers", **kwargs).fetchone()
     if not res:
-        raise ValueError("Server not found")
+        raise IndexError("Emtpy result")
     return res
 
 def disable_user(
         db,
-        query,
+        query=None,
         disabled=True,
         nolimit=None,
         nocommit=None,
         ):
-    _check_query(query)
+    query = makequery(query)
     limit = "" if nolimit else " LIMIT 1"
-    db.cur.execute("UPDATE users SET disabled = ? WHERE {} LIKE ?".format(query[0],) + limit, (disabled, query[1]))
+    db.cur.execute("UPDATE users SET disabled = ?" + query + limit, (disabled, *query[1]))
     if not nocommit:
         db.con.commit()
 
@@ -232,18 +175,14 @@ def enable_user(*args, **kwargs):
 
 def delete_user( # !!! DANGEROUS !!!
         db, # Database object
-        query, # An array or a tuple: (column name, query)
-        nocommit=None
+        nocommit=None,
+        **kwargs,
         ):
-    # Run the dis_user function insted
+    # Disable the user instead
     # Backup your database before running this function. Do it multiple times just in case
-    raise Exception("Don't do this please. Run the dis_user instead") # comment this line (DANGEROUS)
+    raise Exception("Don't do this please.") # comment this line (DANGEROUS)
     # !!! DANGEROUS !!!
-    _check_query(query)
-    res = db.cur.execute(
-            "SELECT id FROM users WHERE {} LIKE ?".format(query[0]),
-            (query[1],)
-            ).fetchmany(size=2)
+    res = select(db, "users", **kwargs).fetchmany(size=2)
     res = _return_one(res)[0]
     db.cur.execute("DELETE FROM sales WHERE user_id = ?", (res,))
     db.cur.execute("DELETE FROM telegram WHERE user_id = ?", (res,))
@@ -253,23 +192,24 @@ def delete_user( # !!! DANGEROUS !!!
 
 def mod_user(
         db,
-        query, # An array or a tuple: (column name, query)
+        query=None, # An array or a tuple: (column name, query)
+        modify={}
         nocommit=None,
         nolimit=None,
         **kwargs, # columns to be changed
         ):
-    _check_query(query)
-    if len(kwargs) < 1:
-        raise IndexError("At least one kwarg is required for this function")
+    query = makequery(query)
+    if not modify:
+        raise IndexError("Nothing to do")
     set_string = []
-    pattern_word = r'^[0-9A-Za-z]{,24}$'
-    for kwarg in kwargs:
-        _check_query((kwarg, None))
-        set_string.append("{} = ?".format(kwarg))
+    for key in modify:
+        if not _matchword(key):
+            raise Exception("Invalid keyword")
+        set_string.append("{} = ?".format(key))
     limit = "" if nolimit else " LIMIT 1"
     res = db.cur.execute(
-            "UPDATE users SET {} WHERE {} = ?".format(', '.join(set_string) + limit, query[0]),
-            tuple(kwargs.values()) + (query[1],)
+            "UPDATE users SET {}".format(', '.join(set_string)) + query[0] + limit,
+            (*modify.values() ,*query[1]),
             )
     if not nocommit:
         db.con.commit()
@@ -279,14 +219,47 @@ def _return_one(res, soft=None):
         return res[0]
     if soft:
         return
-    if len(res) == 0:
-        raise ValueError("Could not find the given query")
+    if not res:
+        raise IndexError("Could not find the given query")
     else:
-        raise ValueError("Found too many users with the given query")
+        raise IndexError("Found too many rows with the given query")
 
-def _check_query(query):
-    pattern_word = r'^[0-9A-Za-z\_]{,24}$'
-    if len(query) != 2:
-        raise ValueError("Query needs to be a tuple containing the column name and the query")
-    if not recompile(pattern_word).match(query[0]):
-        raise ValueError("No SQL Injection allowed")
+def _matchword(text):
+    if not text:
+        return None
+    return recompile(r'^[0-9A-Za-z\_]{,24}$').match(text)
+
+def select(db, table, query=None, columns=None):
+    if not _matchword(table):
+        raise Exception("Knock Knock")
+    print(query)
+    query = makequery(query)
+    columns = makecolumns(columns)
+    return db.cur.execute(f"SELECT {columns} FROM {table}" + query[0], *query[1])
+
+def makecolumns(columns):
+    if not columns or columns == "*":
+        return "*"
+    if not isinstance(columns, tuple):
+        raise TypeError("Invalid Type")
+    if not all([isinstance(i, str) for i in query]):
+        raise TypeError("Invalid Type")
+    if not all([_matchword(i) for i in columns]):
+        raise Exception("SQL Inje... We don't do that here")
+    return ', '.join(columns)
+
+def makequery(query):
+    if not query:
+        return ("", ())
+    operations = ["=", "!=", "LIKE", "IS", "IS NOT"]
+    if not isinstance(query, tuple):
+        raise TypeError("Invalid Type")
+    if len(query) != 3:
+        raise IndexError("Query needs to be a tuple containing the column name, operation and the query")
+    if not all([isinstance(i, str) for i in query]):
+        raise TypeError("Invalid Type")
+    if not _matchword(query[0]):
+        raise Exception("SQL Injecting? WHY?")
+    if not query[1] in operations:
+        raise ValueError("Invalid Operation")
+    return (" WHERE {} {} ?".format(*query[:2]), (query[2],))
