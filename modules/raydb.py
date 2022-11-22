@@ -15,8 +15,12 @@ id INTEGER PRIMARY KEY,
 username TEXT UNIQUE NOT NULL,
 count INTEGER NOT NULL,
 uuid TEXT UNIQUE NOT NULL,
+plan INT
 disabled INTEGER
+FOREIGN KEY(plan) REFERENCES plans(id)
 );
+CREATE TABLE IF NOT EXISTS plans (
+id INTEGER PRIMARY KEY,
 CREATE TABLE IF NOT EXISTS sales (
 id INTEGER PRIMARY KEY,
 user_id INTEGER NOT NULL,
@@ -180,8 +184,9 @@ def delete_user( # !!! DANGEROUS !!!
         ):
     # Disable the user instead
     # Backup your database before running this function. Do it multiple times just in case
-    raise Exception("Don't do this please.") # comment this line (DANGEROUS)
+    raise Exception("Don't do this please.") # comment this line
     # !!! DANGEROUS !!!
+    # It will mess up your database. Do it by hand
     res = select(db, "users", **kwargs).fetchmany(size=2)
     res = _return_one(res)[0]
     db.cur.execute("DELETE FROM sales WHERE user_id = ?", (res,))
@@ -193,7 +198,7 @@ def delete_user( # !!! DANGEROUS !!!
 def mod_user(
         db,
         query=None, # An array or a tuple: (column name, query)
-        modify={}
+        modify={},
         nocommit=None,
         nolimit=None,
         **kwargs, # columns to be changed
@@ -232,17 +237,16 @@ def _matchword(text):
 def select(db, table, query=None, columns=None):
     if not _matchword(table):
         raise Exception("Knock Knock")
-    print(query)
     query = makequery(query)
     columns = makecolumns(columns)
-    return db.cur.execute(f"SELECT {columns} FROM {table}" + query[0], *query[1])
+    return db.cur.execute(f"SELECT {columns} FROM {table}" + query[0], (*query[1],))
 
 def makecolumns(columns):
     if not columns or columns == "*":
         return "*"
     if not isinstance(columns, tuple):
         raise TypeError("Invalid Type")
-    if not all([isinstance(i, str) for i in query]):
+    if not all([isinstance(i, str) for i in columns]):
         raise TypeError("Invalid Type")
     if not all([_matchword(i) for i in columns]):
         raise Exception("SQL Inje... We don't do that here")

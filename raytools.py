@@ -48,7 +48,7 @@ def handle_get(*args, **kwargs):
     db = Database(kwargs["database"])
     try:
         user_id, username, count, uuid, disabled = get_user(db, query=("username", "LIKE", kwargs["user"]))
-    except ValueError:
+    except IndexError:
         log.critical("User not found")
         return 1
     log.info(f"{user_id} {username} {count} {uuid} {disabled}")
@@ -86,7 +86,7 @@ def handle_enable(*args, **kwargs):
     db = Database(kwargs["database"])
     enable_user(db, ("username", kwargs["user"]),)
 
-def handle_restart(*args, **kwargs):
+def handle_makecfg(*args, **kwargs):
     db = Database(kwargs["database"])
     if kwargs["output"] == "-":
         log.info("Writing to stdout")
@@ -102,8 +102,11 @@ def handle_restart(*args, **kwargs):
         log.critical("Invalid type for input file")
         return 1
     kwargs["input"] = kwargs["input"].read()
-    users = get_users(db, columns=["id", "count", "username"], query=("disabled", "IS NOT", "1"))
+    users = get_users(db, columns=("id", "count", "uuid"), query=("disabled", "IS NOT", "1"))
     kwargs["output"].write(jsondumps(populatecfg(users, kwargs["input"]), indent=4))
+
+def handle_restart(*args, **kwargs):
+    pass
 
 def handle_addsrv(*args, **kwargs):
     db = Database(kwargs["database"])
@@ -151,7 +154,8 @@ def parse_args():
     parser_renew = subparser.add_parser('renew', help='Renew user\'s subscription')
     parser_disable = subparser.add_parser('disable', help='Disable (deactivate) a user')
     parser_enable = subparser.add_parser('enable', help='Enable (activate) a user')
-    parser_restart = subparser.add_parser('restart', help='Restart ray server/servers')
+    parser_makecfg = subparser.add_parser('makecfg', help='Populate the configuration file and output it to a file (or stdout)')
+    parser_restart = subparser.add_parser('restart', help='Restart ray servers')
     parser_addsrv = subparser.add_parser('addsrv', help='Add a new server')
 
     # global arguments
@@ -181,9 +185,10 @@ def parse_args():
     parser_disable.add_argument('user', type=str, help=username_help)
     # enable arguments
     parser_enable.add_argument('user', type=str, help=username_help)
+    # makecfg arguments
+    parser_makecfg.add_argument('-i', '--input', type=str, default=stdin, help="Source configuration file. You could also use stdin for this -> cat config.json | script.py")
+    parser_makecfg.add_argument('-o', '--output', type=str, required=True, help="Destination configuration file. '-' for stdout.")
     # restart arguments
-    parser_restart.add_argument('-i', '--input', type=str, default=stdin, help="Source configuration file. You could also use stdin for this -> cat config.json | script.py")
-    parser_restart.add_argument('-o', '--output', type=str, required=True, help="Destination configuration file. '-' for stdout.")
     parser_restart.add_argument('-s', '--service', type=str, required=True, help="Ray service name")
     # addsrv arguments
     parser_addsrv.add_argument('link', type=str, help="Path to your configuration file OR a vmess or vless link with these variables inside it: ^NAME^, ^ADDRESS^, ^UUID^, ^AID^(vmess only), ^SCR^(vmess only)")
@@ -196,6 +201,7 @@ def parse_args():
     parser_renew.set_defaults(func=handle_add)
     parser_disable.set_defaults(func=handle_disable)
     parser_enable.set_defaults(func=handle_enable)
+    parser_makecfg.set_defaults(func=handle_makecfg)
     parser_restart.set_defaults(func=handle_restart)
     parser_addsrv.set_defaults(func=handle_addsrv)
     args = parser.parse_args()
