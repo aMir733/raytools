@@ -88,7 +88,7 @@ def formatlink(
     for key, value in kwargs.items():
         if not isinstance(value, str):
             value = str(value)
-        if not _isjsonsafe(value):
+        if not isjsonsafe(value):
             raise Exception("Value contains an illegal character: " + value)
         link = link.replace("^{}^".format(key.upper()), value)
     return writelink(protocol, link)
@@ -250,15 +250,26 @@ def stamptotime(date): # Converts timestamp to a datetime object
 def timetostamp(date): # Converts datetime object to timestamp
     return int(date.timestamp())
 
-def _isjsonsafe(text):
+def isjsonsafe(text):
     illegals = '"\''
     for i in illegals:
         if i in text:
             return None
     return True
 
-def _matchword(text):
+def matchword(text):
     return recompile(r'^[0-9A-Za-z]$').match(text)
+
+def parse_date(date):
+    if not isinstance(date, str):
+        raise TypeError("Invalid type")
+    if date == "now":
+        return timetostamp(timenow())
+    date = date.split("/")
+    if len(date) != 3 or not all([i.isdigit() for i in date]):
+        log.critical("Invalid date: " + '/'.join(date))
+        return 1
+    return timetostamp(timemake(date))
 
 def isopenedfile(obj):
     return isinstance(obj, io.TextIOWrapper)

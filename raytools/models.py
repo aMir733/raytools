@@ -14,15 +14,20 @@ class Plan(Base, table = True):
     class Config:
         arbitrary_types_allowed = True
 
+class Disabled(Base, table = True):
+    reason: str
+    users: List["User"] = Relationship(back_populates="disabled")
+
 class User(Base, table = True):
     username: str = Field(sa_column_kwargs={"unique": True}, index=True)
     count: int
     uuid: str = Field(sa_column_kwargs={"unique": True})
-    disabled: Optional[bool] = Field(default=False, index=True)
-    plan_id: Optional[int] = Field(default=0, foreign_key="plan.id")
-    plan: Plan = Relationship(back_populates="users")
     sales: List["Sale"] = Relationship(back_populates="user")
     telegrams: List["Telegram"] = Relationship(back_populates="user")
+    disabled_id: Optional[int] = Field(default=0, foreign_key="disabled.id", index=True)
+    disabled: Disabled = Relationship(back_populates="users")
+    plan_id: Optional[int] = Field(default=0, foreign_key="plan.id")
+    plan: Plan = Relationship(back_populates="users")
 
 class Sale(Base, table = True):
     date: int
