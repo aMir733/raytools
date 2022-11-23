@@ -44,9 +44,13 @@ def handle_add(*args, **kwargs):
 
 def handle_get(*args, **kwargs):
     session = Session(db.engine)
-    user = session.exec(
-            select(User).where(User.username == kwargs["user"]),
-            ).one()
+    try:
+        user = session.exec(
+                select(User).where(User.username == kwargs["user"]),
+                ).one()
+    except NoResultFound:
+        log.critical("No such username")
+        return 1
     log.info("Found: {}".format(user))
     if kwargs["server"]:
         server = session.exec(select(Server).where(Server.name == kwargs["server"])).one()
@@ -141,7 +145,7 @@ def parse_date(date):
 
 def parse_args():
     # Frequently used help messages
-    username_help = "User's username. Example: 'joe22' OR 'joe%' OR 'j_e22' all point to 'joe22'"
+    username_help = "Username"
     username_new_help = "Username must be a unique string. Example: joe22 OR jane OR 124"
     date_help = "A slash seperated date format. Example: '1401/2/14' OR 'now' for current time."
     days_help = "Subscription's duration in days"
