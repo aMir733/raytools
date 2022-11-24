@@ -5,7 +5,32 @@ from uuid import uuid4, UUID
 from re import compile as recompile
 from json import load as jsonload, loads as jsonloads, dumps as jsondumps
 import io
+import os
+import time
 from base64 import b64encode, b64decode
+import asyncio
+
+async def tail(f): # http://www.dabeaz.com/generators/
+    f.seek(0, os.SEEK_END)
+    while True:
+        line = f.readline()
+        if not line:
+            await asyncio.sleep(0.1)
+            continue
+        yield line
+
+async def log_tail(f):
+    async for line in tail(open(f)):
+        yield log_parseline(line)
+
+async def log_parseline(line):
+    line = line.split(' ')
+    try:
+        if line[3] != "accepted":
+            return
+        return (line[6], line[2])
+    except IndexError:
+        return
 
 def anytojson(inp):
     if isinstance(inp, str):
