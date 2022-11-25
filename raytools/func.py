@@ -10,19 +10,27 @@ import time
 from base64 import b64encode, b64decode
 import asyncio
 
+def lines_from_files(*paths):
+    files = open_files(*paths)
+    return concat(files)
+
+def open_files(*paths):
+    for path in paths:
+        yield open(path, "rt")
+        
+def concat(*sources):
+    for source in sources:
+        yield from source
+
 async def tail(f): # http://www.dabeaz.com/generators/
-    f.seek(0, os.SEEK_END)
+    await f.seek(0, 2)
     while True:
-        line = f.readline()
+        line = await f.readline()
         if not line:
             await asyncio.sleep(0.1)
             continue
         yield line
-
-async def log_tail(f):
-    async for line in tail(open(f)):
-        yield log_parseline(line)
-
+       
 async def log_parseline(line):
     line = line.split(' ')
     try:
