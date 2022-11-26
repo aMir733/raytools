@@ -31,8 +31,8 @@ async def tail(f): # http://www.dabeaz.com/generators/
             continue
         yield line
        
-async def log_parseline(line):
-    line = line.split(' ')
+def log_parseline(line):
+    line = line.strip().split(' ')
     try:
         if line[3] != "accepted":
             return

@@ -18,7 +18,7 @@ async def check_count():
     while True:
         await asyncio.sleep(30)
         for user, ips in users.items():
-            print(user, len(ips))
+            print(user, ' '.join(len(ips)))
         users = {}
 
 @aiocron.crontab('00 00 * * *')
@@ -28,8 +28,7 @@ async def check_expire():
 async def main():
     global users
     users = {}
-    read1 = asyncio.create_task(log_tail("/tmp/t"))
-    read2 = asyncio.create_task(log_tail("/tmp/a"))
+    read1 = asyncio.create_task(log_tail("/var/log/ray/access.log"))
     check = asyncio.create_task(check_count())
 
 if __name__ == "__main__":
