@@ -17,7 +17,7 @@ def log_tail(filename, users):
 
 def check_count(users):
     for user, ips in users.items():
-        print(user, ' '.join(len(ips)))
+        print(user, len(ips))
     users = {}
     
 def init_args():
