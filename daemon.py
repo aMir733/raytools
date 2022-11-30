@@ -1,37 +1,56 @@
 from raytools.func import *
-import asyncio
-import aiocron
-import aiofiles
+from raytools.db import Database
+from raytools.parser import Daemon
+from apscheduler.schedulers.background import BackgroundScheduler
+from multiprocessing import Manager
+from sys import argv
 
-async def log_tail(f):
-    global users
-    async for line in tail(await aiofiles.open(f)):
-        user = await log_parseline(line)
+def log_tail(filename, users):
+    print("tailing: " + filename)
+    for line in tail(open(filename)):
+        user = log_parseline(line)
         if user:
             try:
                 users[user[0]].add(user[1])
             except KeyError:
                 users[user[0]] = {user[1]}
 
-async def check_count():
-    global users
-    while True:
-        await asyncio.sleep(30)
-        for user, ips in users.items():
-            print(user, ' '.join(len(ips)))
-        users = {}
-
-@aiocron.crontab('00 00 * * *')
-async def check_expire():
-    pass
-
-async def main():
-    global users
+def check_count(users):
+    for user, ips in users.items():
+        print(user, ' '.join(len(ips)))
     users = {}
-    read1 = asyncio.create_task(log_tail("/var/log/ray/access.log"))
-    check = asyncio.create_task(check_count())
+    
+def init_args():
+    parser = Daemon()
+    return parser.parse(logs=(('sqlalchemy.engine', 20),), default=30)
+
+def init_db(database):
+    db = Database(database)
+    db.create()
+    return db
+
+def main():
+    # Initialize parser and db
+    args = init_args()
+    db = init_db(args.__dict__.pop('database'))
+
+    # Multithread manager
+    manager = Manager()
+    users = manager.dict()
+    
+    # Scheduler
+    scheduler = BackgroundScheduler()
+    for filename in args.logs:
+        scheduler.add_job(log_tail, args=(filename, users))
+    scheduler.add_job(check_count, 'interval', args=(users,), seconds=30)
+    scheduler.start()
+    
+    # Run until Ctrl+C
+    try:
+        while True:
+            time.sleep(2)
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
-    loop.run_forever()
+    main()

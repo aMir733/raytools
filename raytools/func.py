@@ -8,26 +8,41 @@ import io
 import os
 import time
 from base64 import b64encode, b64decode
-import asyncio
+import queue, threading
 
-def lines_from_files(*paths):
-    files = open_files(*paths)
-    return concat(files)
+#def sendto_queue(items, thequeue):
+#    for item in items:
+#        thequeue.put(item)
+#    thequeue.put(StopIteration)
+#
+#def lines_from_files(paths):
+#    files = open_files(paths)
+#    return concat(files)
+#
+#def open_files(paths):
+#    for path in paths:
+#        yield open(path, "rt")
+#
+#def concat(sources):
+#    for source in sources:
+#        yield from source
+#        
+#def multiplex(sources):
+#    in_q = queue.Queue()
+#    consumers = []
+#    for src in sources:
+#        thr = threading.Thread(target=sendto_queue,
+#                               args=(src, in_q))
+#        thr.start()
+#        consumers.append(genfrom_queue(in_q))
+#    return gen_cat(consumers)
 
-def open_files(*paths):
-    for path in paths:
-        yield open(path, "rt")
-        
-def concat(*sources):
-    for source in sources:
-        yield from source
-
-async def tail(f): # http://www.dabeaz.com/generators/
-    await f.seek(0, 2)
+def tail(f): # http://www.dabeaz.com/generators/
+    f.seek(0, 2)
     while True:
-        line = await f.readline()
+        line = f.readline()
         if not line:
-            await asyncio.sleep(0.1)
+            time.sleep(0.1)
             continue
         yield line
        
