@@ -19,7 +19,7 @@ def check_count(users):
     for user, ips in users.items():
         l = len(ips)
         try:
-            if int(user.split("@")[0]) > l:
+            if not int(user.split("@")[0]) < l:
                 continue
         except ValueError:
             pass
