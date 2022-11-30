@@ -17,7 +17,13 @@ def log_tail(filename, users):
 
 def check_count(users):
     for user, ips in users.items():
-        print(user, len(ips))
+        l = len(ips)
+        try:
+            if int(user.split("@")[0]) > l:
+                continue
+        except ValueError:
+            pass
+        print("{0}: {1} -> {2}".format(user, l, ' '.join(ips)))
     users = {}
     
 def init_args():
