@@ -10,33 +10,6 @@ import time
 from base64 import b64encode, b64decode
 import queue, threading
 
-#def sendto_queue(items, thequeue):
-#    for item in items:
-#        thequeue.put(item)
-#    thequeue.put(StopIteration)
-#
-#def lines_from_files(paths):
-#    files = open_files(paths)
-#    return concat(files)
-#
-#def open_files(paths):
-#    for path in paths:
-#        yield open(path, "rt")
-#
-#def concat(sources):
-#    for source in sources:
-#        yield from source
-#        
-#def multiplex(sources):
-#    in_q = queue.Queue()
-#    consumers = []
-#    for src in sources:
-#        thr = threading.Thread(target=sendto_queue,
-#                               args=(src, in_q))
-#        thr.start()
-#        consumers.append(genfrom_queue(in_q))
-#    return gen_cat(consumers)
-
 def tail(f): # http://www.dabeaz.com/generators/
     f.seek(0, 2)
     while True:
@@ -274,8 +247,11 @@ def timenow():
 def timemake(date):
     return jdatetime.datetime(*[int(i) for i in date])
 
-def timedelta(date, days): # Increment/Decrement days in timestamp
-    return date + days * 86400
+def timedelta(date, days): # Increment/Decrement days in timestamp or datetime object. Returns timestamp
+    if isinstance(date, jdatetime.datetime):
+        date = timetostamp(date)
+    if isinstance(date, int):
+        return date + days * 86400
 
 def strtotime(date): # Converts standard ISO8601 string to datetime object
     if not isinstance(date, str):
@@ -296,6 +272,8 @@ def stamptotime(date): # Converts timestamp to a datetime object
     return jdatetime.datetime.fromtimestamp(date)
 
 def timetostamp(date): # Converts datetime object to timestamp
+    if not isinstance(date, jdatetime.datetime):
+        raise TypeError("Invalid Type")
     return int(date.timestamp())
 
 def isjsonsafe(text):
@@ -314,9 +292,10 @@ def parse_date(date):
     if date == "now":
         return timetostamp(timenow())
     date = date.split("/")
-    if len(date) != 3 or not all([i.isdigit() for i in date]):
-        log.critical("Invalid date: " + '/'.join(date))
-        return 1
+    if len(date) == 1 and recompile(r'^(\+|-)[0-9]+').match(date[0]):
+        pass
+    if len(date) < 3 or len(date) > 6 or not all([i.isdigit() for i in date]):
+        raise ValueError("Invalid date: " + '/'.join(date))
     return timetostamp(timemake(date))
 
 def isopenedfile(obj):

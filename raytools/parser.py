@@ -10,7 +10,7 @@ class Base:
     '-> RT_DATABASE="customers.db"'
     username_help = "Username"
     username_new_help = "Username must be a unique string. Example: joe22 OR jane OR 124"
-    date_help = "A slash seperated date format. Example: '1401/2/14' OR 'now' for current time."
+    date_help = "A slash seperated date format (optionally with time). Example: '1401/2/14' OR '1401/4/22/16/30' OR 'now' for current time."
     days_help = "Subscription's duration in days"
 
     def calc_verb(self, verbose, quiet, default):
@@ -68,8 +68,8 @@ class Raytools(Base):
         # add arguments
         self.parser_add.add_argument('user', type=str, help=self.username_new_help)
         self.parser_add.add_argument('-c', '--count', type=int, default=1, help='Number of devices allowed for this user')
-        self.parser_add.add_argument('-d', '--date', type=str, default="now", help=self.date_help + ' Subscription\'s start date')
-        self.parser_add.add_argument('-y', '--days', type=int, default=30, help=self.days_help)
+        self.parser_add.add_argument('-b', '--sdate', type=str, default=None, help=self.date_help + ' Subscription\'s start date')
+        self.parser_add.add_argument('-e', '--edate', type=str, required=True, help=self.date_help + ' Subscription\'s end date')
         self.parser_add.add_argument('-u', '--uuid', type=str, default=None, help='UUID to use for this user')
         self.parser_add.add_argument('-p', '--plan', type=int, default=None, help='User\'s subscription\'s plan')
         self.parser_add.add_argument('-t', '--telegram', type=int, default=None, help='User\'s Telegram ID')
@@ -81,8 +81,8 @@ class Raytools(Base):
         self.parser_get.add_argument('-c', '--security', type=str, default=None, help="Overwrite security (sc)")
         # renew arguments
         self.parser_renew.add_argument('user', type=str, help=self.username_help)
-        self.parser_renew.add_argument('-d', '--date', type=str, default="now", help=self.date_help + ' Renew date')
-        self.parser_renew.add_argument('-y', '--days', type=int, default=30, help=self.days_help)
+        self.parser_renew.add_argument('-b', '--sdate', type=str, default=None, help=self.date_help + ' Subscription\'s start date')
+        self.parser_renew.add_argument('-e', '--edate', type=str, required=True, help=self.date_help + ' Subscription\'s end date')
         # disable arguments
         self.parser_disable.add_argument('user', type=str, help=self.username_help)
         self.parser_disable.add_argument(

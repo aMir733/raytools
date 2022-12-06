@@ -15,16 +15,18 @@ def handle_add(*args, **kwargs):
     if not isuuid(kwargs["uuid"]):
         kwargs["log"].critical(f"'{kwargs['uuid']}' is not a valid UUID")
         return 1
-    kwargs["date"] = parse_date(kwargs["date"])
+    if kwargs["sdate"]:
+        kwargs["sdate"] = parse_date(kwargs["sdate"])
+    kwargs["edate"] = parse_date(kwargs["edate"])
     user = User(
             username=kwargs["user"],
             count=kwargs["count"],
             uuid=kwargs["uuid"],
             )
     sale = Sale(
-            date=kwargs["date"],
-            days=kwargs["days"],
-            start=True,
+            sdate=kwargs["sdate"],
+            edate=kwargs["edate"],
+            first=True,
             user=user,
             )
     session.add(user)
@@ -73,19 +75,10 @@ def handle_renew(*args, **kwargs):
 
 def handle_disable(*args, disabled=True, **kwargs):
     session = Session(kwargs["database"].engine)
-    if kwargs["reason"].isdigit():
-        kwargs["reason"] = int(kwargs["reason"])
-        query = Disabled.id
-    else:
-        query = Disabled.reason
-    try:
-        disabled = session.exec(select(Disabled).where(query == kwargs["reason"])).one()
-    except NoResultFound:
-        if not isinstance(kwargs["reason"], str):
-            kwargs["log"].critical("Reason not found in the database")
-    return 1
+    if not disabled:
+        kwargs["reason"] = None
     user = session.exec(select(User).where(User.username == kwargs["user"])).one()
-    user.disabled = disabled
+    user.disabled = kwargs["reason"]
     session.add(user)
     session.commit()
 
