@@ -21,8 +21,9 @@ def init_db(database):
     
 def main():
     args = init_args()
-    db = init_db(args.__dict__.pop('database'))
-    exit(args.__dict__.pop('func')(**vars(args), database=db, log=logging))
+    db = Database(args.__dict__.pop('database'))
+    session = db.session()
+    exit(args.__dict__.pop('func')(**vars(args), database=session, log=logging))
 
 if __name__ == '__main__':
     main()

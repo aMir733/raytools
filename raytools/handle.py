@@ -1,6 +1,6 @@
 from .func import *
 from .models import *
-from sqlmodel import Session, select
+from sqlmodel import select
 from sqlalchemy.exc import *
 from json import loads as jsonloads, dumps as jsondumps, load as jsonload, dump as jsondump
 from re import compile as recompile
@@ -9,7 +9,6 @@ import logging
 from sys import stdout
 
 def handle_add(*args, **kwargs):
-    session = Session(kwargs["database"].engine)
     if not kwargs["uuid"]:
         kwargs["uuid"] = make_uuid()
     if not isuuid(kwargs["uuid"]):
@@ -29,20 +28,20 @@ def handle_add(*args, **kwargs):
             first=True,
             user=user,
             )
-    session.add(user)
-    session.add(sale)
+    kwargs["database"].add(user)
+    kwargs["database"].add(sale)
     if kwargs["telegram"]:
         telegram = Telegram(
                 tg_id=kwargs["telegram"],
                 user=User(username=kwargs["user"]),
                 )
-        session.add(telegram)
-    session.commit()
+        kwargs["database"].add(telegram)
+    kwargs["database"].commit()
 
 def handle_get(*args, **kwargs):
-    session = Session(kwargs["database"].engine)
+    kwargs["database"] = kwargs["database"](kwargs["database"].engine)
     try:
-        user = session.exec(
+        user = kwargs["database"].exec(
                 select(User).where(User.username == kwargs["user"]),
                 ).one()
     except NoResultFound:
@@ -50,7 +49,7 @@ def handle_get(*args, **kwargs):
         return 1
     kwargs["log"].info("Found: {}".format(user))
     if kwargs["server"]:
-        server = session.exec(select(Server).where(Server.name == kwargs["server"])).one()
+        server = kwargs["database"].exec(select(Server).where(Server.name == kwargs["server"])).one()
         print(formatlink(
             server.link,
             name=kwargs["name"] if kwargs["name"] else server.name,
@@ -61,32 +60,29 @@ def handle_get(*args, **kwargs):
             ))
 
 def handle_renew(*args, **kwargs):
-    session = Session(kwargs["database"].engine)
     kwargs["date"] = parse_date(kwargs["date"])
-    user = session.exec(select(User).where(User.username == kwargs["user"])).one()
+    user = kwargs["database"].exec(select(User).where(User.username == kwargs["user"])).one()
     sale = Sale(
             date=kwargs["date"],
             days=kwargs["days"],
             start=True,
             user=user,
             )
-    session.add(sale)
-    session.commit()
+    kwargs["database"].add(sale)
+    kwargs["database"].commit()
 
 def handle_disable(*args, disabled=True, **kwargs):
-    session = Session(kwargs["database"].engine)
     if not disabled:
         kwargs["reason"] = None
-    user = session.exec(select(User).where(User.username == kwargs["user"])).one()
+    user = kwargs["database"].exec(select(User).where(User.username == kwargs["user"])).one()
     user.disabled = kwargs["reason"]
-    session.add(user)
-    session.commit()
+    kwargs["database"].add(user)
+    kwargs["database"].commit()
 
 def handle_enable(*args, **kwargs):
     handle_disable(*args, **kwargs, disabled=False)
 
 def handle_makecfg(*args, **kwargs):
-    session = Session(kwargs["database"].engine)
     if kwargs["output"] == "-":
         kwargs["log"].info("Writing to stdout")
         out_file = stdout
@@ -100,7 +96,7 @@ def handle_makecfg(*args, **kwargs):
     if not isopenedfile(in_file):
         kwargs["log"].critical("Invalid type for input file")
         return 1
-    users = session.exec(select(User.id, User.count, User.uuid).where(User.disabled == 0)).all()
+    users = kwargs["database"].exec(select(User.id, User.uuid).where(User.disabled == 0)).all()
     users_len = len(users)
     kwargs["log"].info("Found {} users".format(users_len))
     if not users_len:
@@ -113,7 +109,6 @@ def handle_restart(*args, **kwargs):
     pass
 
 def handle_addsrv(*args, **kwargs):
-    session = Session(kwargs["database"].engine)
     if islink(kwargs["link"]):
         link = readlink(kwargs["link"])
     else:
@@ -128,5 +123,9 @@ def handle_addsrv(*args, **kwargs):
             kwargs["address"],
             link,
             )
-    session.add(server)
-    session.commit()
+    kwargs["database"].add(server)
+    kwargs["database"].commit()
+
+def handle_expired(*args, **kwargs):
+    users = kwargs["database"].exec(select(User).where(User.expire == 0)).all()
+    pass

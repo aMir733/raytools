@@ -18,18 +18,11 @@ class User(Base, table = True):
     username: str = Field(sa_column_kwargs={"unique": True}, index=True)
     count: int
     uuid: str = Field(sa_column_kwargs={"unique": True})
+    expires: int
     disabled: Optional[str] = Field(default=None)
-    sales: List["Sale"] = Relationship(back_populates="user")
     telegrams: List["Telegram"] = Relationship(back_populates="user")
     plan_id: Optional[int] = Field(default=0, foreign_key="plan.id")
     plan: Plan = Relationship(back_populates="users")
-
-class Sale(Base, table = True):
-    sdate: Optional[int] = Field(default=None)
-    edate: int
-    first: Optional[bool]
-    user_id: int = Field(foreign_key="user.id")
-    user: User = Relationship(back_populates="sales")
 
 class Telegram(Base, table = True):
     tg_id: int = Field(index=True)

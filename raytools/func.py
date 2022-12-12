@@ -10,6 +10,13 @@ import time
 from base64 import b64encode, b64decode
 import queue, threading
 
+
+def locks_aq(locks):
+    return (lock.acquire() for lock in locks)
+
+def locks_re(locks):
+    return (lock.release() for lock in locks)
+
 def tail(f): # http://www.dabeaz.com/generators/
     f.seek(0, 2)
     while True:
@@ -217,7 +224,7 @@ def restart(service="v2ray@raytools"):
 
 def restart_remote(
         servers, # ["root@1.1.1.1", "root@2.2.2.2"] OR [("root@1.1.1.1", "xray@bridge"), "root@2.2.2.2"]
-        service=None,
+        service="v2ray@raytools",
         ):
     sc = None
     codes = []
@@ -227,7 +234,7 @@ def restart_remote(
             sc = server[1]
         else:
             name = server
-            sc = service if service else "v2ray@raytools"
+            sc = service
         codes.append(subrun(['ssh', name, '--', 'systemctl', 'restart', '--', sc]).returncode)
     return codes
 
