@@ -8,9 +8,11 @@ class Base:
     db_help = 'Full path to the database file. '
     'Can also be given from enviroment variable '
     '-> RT_DATABASE="customers.db"'
-    username_help = "Username"
+    username_help = "Username or UUID"
     username_new_help = "Username must be a unique string. Example: joe22 OR jane OR 124"
-    date_help = "A slash seperated date format (optionally with time). Example: '1401/2/14' OR '1401/4/22/16/30' OR 'now' for current time."
+    date_help = "A slash seperated date format (optionally with time)."
+    "Can also use + or - for delta time."
+    "Example: '1401/2/14' OR '1401/4/22/16/30' OR +30 (30 days from now) OR -7 (7 days before) OR 'now' for the current time."
     days_help = "Subscription's duration in days"
 
     def calc_verb(self, verbose, quiet, default):
@@ -57,6 +59,7 @@ class Raytools(Base):
         Raytools.parser_makecfg = self.subparser.add_parser('makecfg', help='Populate the configuration file and output it to a file (or stdout)')
         Raytools.parser_restart = self.subparser.add_parser('restart', help='Restart ray servers')
         Raytools.parser_addsrv = self.subparser.add_parser('addsrv', help='Add a new server')
+        Raytools.parser_login = self.subparser.add_parser('login', help='Login a user to telegram')
 
         # global arguments
         self.parser.add_argument(
@@ -66,10 +69,9 @@ class Raytools(Base):
         self.parser.add_argument('-q', '--quiet', action="store_true", help="quiet output")
         self.parser.add_argument('-v', '--verbose', action="count", help="verbosity level")
         # add arguments
-        self.parser_add.add_argument('user', type=str, help=self.username_new_help)
+        self.parser_add.add_argument('username', type=str, help=self.username_new_help)
         self.parser_add.add_argument('-c', '--count', type=int, default=1, help='Number of devices allowed for this user')
-        self.parser_add.add_argument('-b', '--sdate', type=str, default=None, help=self.date_help + ' Subscription\'s start date')
-        self.parser_add.add_argument('-e', '--edate', type=str, required=True, help=self.date_help + ' Subscription\'s end date')
+        self.parser_add.add_argument('-e', '--expires', type=str, required=True, help=self.date_help + ' Subscription\'s end date')
         self.parser_add.add_argument('-u', '--uuid', type=str, default=None, help='UUID to use for this user')
         self.parser_add.add_argument('-p', '--plan', type=int, default=None, help='User\'s subscription\'s plan')
         self.parser_add.add_argument('-t', '--telegram', type=int, default=None, help='User\'s Telegram ID')
@@ -81,8 +83,7 @@ class Raytools(Base):
         self.parser_get.add_argument('-c', '--security', type=str, default=None, help="Overwrite security (sc)")
         # renew arguments
         self.parser_renew.add_argument('user', type=str, help=self.username_help)
-        self.parser_renew.add_argument('-b', '--sdate', type=str, default=None, help=self.date_help + ' Subscription\'s start date')
-        self.parser_renew.add_argument('-e', '--edate', type=str, required=True, help=self.date_help + ' Subscription\'s end date')
+        self.parser_renew.add_argument('-d', '--expires', type=str, required=True, help=self.date_help + ' Subscription\'s end date')
         # disable arguments
         self.parser_disable.add_argument('user', type=str, help=self.username_help)
         self.parser_disable.add_argument(
@@ -107,6 +108,9 @@ class Raytools(Base):
         self.parser_addsrv.add_argument('-n', '--name', type=str, required=True, help="A unique name for your server")
         self.parser_addsrv.add_argument('-a', '--address', type=str, required=True, help="Server's address")
         self.parser_addsrv.add_argument('-i', '--inbound-index', type=str, default=None, help="Only required if you have several inbounds in your configuration file")
+        # login arguments
+        self.parser_login.add_argument('user', type=str, help=self.username_new_help)
+        self.parser_login.add_argument('-t', '--telegram', type=int, required=True, help='User\'s Telegram ID')
     
 class Daemon(Base):
     def __init__(self):

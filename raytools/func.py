@@ -49,24 +49,27 @@ def anytojson(inp):
     return inp
 
 def populatecfg(
-        clients, # [(x,y,z),(a,b,c)] -> (user_id, count, uuid)
+        clients, # [(x,z),(a,c)] -> (user_id, uuid)
         cfg, # {} OR "{}" OR /file/path OR io.TextIOWrapper
         ):
     cfg = anytojson(cfg)
     checkcfg(cfg)
     if not isinstance(clients, list) and not isinstance(clients, tuple):
-        raise TypeError("Invalid type for clients. Only lists or tuples are acceptable")
-    if not clients:
-        raise IndexError("Empty list of clients")
-    max_digits = len(str(max(clients)[0]))
+        raise TypeError("Invalid type for clients. Only lists or tuples are accepted")
+    #if not clients:
+    #    raise IndexError("Empty list of clients")
+    max_digits = len(str(max(clients)[0])) if clients else 1
     passed = None
     if 'inbound' in cfg:
         cfg['inbounds'] = [cfg.pop("inbound")]
     for inbound in cfg['inbounds']:
         if inbound['protocol'] != 'vmess' and inbound['protocol'] != 'vless':
             continue
-        default_client = inbound['settings']['clients'][0]
-        if default_client['email'] != "admin@raytools":
+        try:
+            default_client = inbound['settings']['clients'][0]
+        except IndexError:
+            continue
+        if default_client['email'] != "admin":
             continue
         passed = True
         for client in clients:
@@ -298,9 +301,10 @@ def parse_date(date):
         raise TypeError("Invalid type")
     if date == "now":
         return timetostamp(timenow())
+    m = recompile(r'(\+|\-)\d+').match(date)
+    if m:
+        return timedelta(timetostamp(timenow()), int(m[0]))
     date = date.split("/")
-    if len(date) == 1 and recompile(r'^(\+|-)[0-9]+').match(date[0]):
-        pass
     if len(date) < 3 or len(date) > 6 or not all([i.isdigit() for i in date]):
         raise ValueError("Invalid date: " + '/'.join(date))
     return timetostamp(timemake(date))
@@ -309,10 +313,12 @@ def isopenedfile(obj):
     return isinstance(obj, io.TextIOWrapper)
 
 def checkcfg(cfg):
-    if not 'inbound' in cfg and not 'inbounds' in cfg:
+    if not 'inbounds' in cfg:
         raise ValueError("No 'inbounds' found in configuration file")
-    if 'inbound' in cfg and 'inbounds' in cfg:
-        raise ValueError("Cannot have both 'inbound' and 'inbounds' entry in configuration file")
+    if not 'api' in cfg:
+        raise ValueError("No 'api' found in configuration file. Please refer to https://xtls.github.io/config/api.html for more information")
+
+
 
 def islink(link):
     if not isinstance(link, str):

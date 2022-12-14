@@ -12,6 +12,7 @@ def init_args():
     parser.parser_makecfg.set_defaults(func=handle_makecfg)
     parser.parser_restart.set_defaults(func=handle_restart)
     parser.parser_addsrv.set_defaults(func=handle_addsrv)
+    parser.parser_login.set_defaults(func=handle_login)
     return parser.parse(logs=(('sqlalchemy.engine', 10),), default=30)
     
 def init_db(database):
@@ -23,7 +24,9 @@ def main():
     args = init_args()
     db = Database(args.__dict__.pop('database'))
     session = db.session()
-    exit(args.__dict__.pop('func')(**vars(args), database=session, log=logging))
+    r = args.__dict__.pop('func')(**vars(args), database=session, log=logging)
+    if r:
+        print(r)
 
 if __name__ == '__main__':
     main()
