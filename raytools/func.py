@@ -1,6 +1,6 @@
 import jdatetime # pip3 install jdatetime
 from zoneinfo import ZoneInfo
-from subprocess import run as subrun
+from subprocess import run as subrun, PIPE
 from uuid import uuid4, UUID
 from re import compile as recompile
 from json import load as jsonload, loads as jsonloads, dumps as jsondumps
@@ -48,42 +48,59 @@ def anytojson(inp):
         raise TypeError("Invalid Type")
     return inp
 
-def populatecfg(
-        clients, # [(x,z),(a,c)] -> (user_id, uuid)
-        cfg, # {} OR "{}" OR /file/path OR io.TextIOWrapper
-        ):
+def parsecfg(cfg):
     cfg = anytojson(cfg)
-    checkcfg(cfg)
-    if not isinstance(clients, list) and not isinstance(clients, tuple):
-        raise TypeError("Invalid type for clients. Only lists or tuples are accepted")
-    #if not clients:
-    #    raise IndexError("Empty list of clients")
-    max_digits = len(str(max(clients)[0])) if clients else 1
-    passed = None
+    valid, reason = isvalidcfg(cfg)
+    if not valid:
+        raise ValueError(reason)
+    return cfg
+
+def getinbounds(
+    cfg,
+    clients,
+    ):
     if 'inbound' in cfg:
         cfg['inbounds'] = [cfg.pop("inbound")]
-    for inbound in cfg['inbounds']:
-        if inbound['protocol'] != 'vmess' and inbound['protocol'] != 'vless':
+    inbounds, passed = ([], None)
+    for index, inbound in enumerate(cfg['inbounds']):
+        if not 'tag' in inbound:
+            raise KeyError(f"No tag was found in {index}th inbound. Please add a tag to all of your inbounds before continuing")
+        if 'tag' == 'api':
+            api_port = inbound['port']
+            continue
+        if not 'protocol' in inbound or inbound['protocol'] != 'vmess' and inbound['protocol'] != 'vless':
+            inbounds.append(inbound)
             continue
         try:
             default_client = inbound['settings']['clients'][0]
-        except IndexError:
+        except (IndexError, KeyError):
+            inbounds.append(inbound)
             continue
-        if default_client['email'] != "admin":
+        if default_client['email'] != "raytools":
+            inbounds.append(inbound)
             continue
         passed = True
-        for client in clients:
-            inbound['settings']['clients'].append({
-                **default_client,
-                "id": client[2], # uuid
-                "email": "{}@{}".format(
-                    str(client[1]),
-                    str(client[0]).zfill(max_digits),
-                    )
-            })
+        inbounds.append(populateinb(inbound, clients, default_client))
     if not passed:
         raise ValueError("Could not find an appropriate inbound to use")
-    return cfg
+    return (inbounds, api_port)
+
+def populateinb(
+    inb,
+    clients,
+    client_defaults={},
+    ):
+    max_digits = len(str(max(clients)[0])) if clients else 1
+    for client in clients:
+        inb['settings']['clients'].append({
+            **client_defaults,
+            "id": client[2], # uuid
+            "email": "{}@{}".format(
+                str(client[1]),
+                str(client[0]).zfill(max_digits),
+                )
+        })
+    return inb
 
 def writelink(
         protocol,
@@ -186,7 +203,9 @@ def cfgtolink( # Calls inbtolink for an inbound in cfg
         inb=None, # Index of the inbound. Only used when you have multiple inbounds in your cfg
         ):
     cfg = anytojson(cfg)
-    checkcfg(cfg)
+    valid, reason = isvalidcfg(cfg)
+    if not valid:
+        raise ValueError(reason)
     if 'inbound' in cfg:
         return inbtolink(cfg['inbound'])
     if 'inbounds' in cfg:
@@ -196,6 +215,23 @@ def cfgtolink( # Calls inbtolink for an inbound in cfg
             raise Exception("No inbounds or Multiple inbounds were found and no 'inb' parameter was given to the function")
         return inbtolink(cfg['inbounds'][inb])
     raise Exception("No inbound found in configuration file")
+
+def api(action, inbounds, backed="xray", port=10085):
+    command = [backend, 'api', action, '-s', f'127.0.0.1:{port}']
+    out = subrun(
+        command,
+        input=jsondumps(inbounds),
+        stdout=PIPE,
+        stderr=stdout,
+        )
+    if out.returncode == 0:
+        return out
+    raise Exception("api call failed '{0}' The output is as follows:\n{1}".format(' '.join(command), out.stdout))
+
+def readinfile(infile):
+    if not isopenedfile(infile):
+        infile = open(infile, "r")
+    return infile
 
 def issystemd():
     if subrun(['command', '-v', 'systemctl']).returncode != 0:
@@ -312,12 +348,43 @@ def parse_date(date):
 def isopenedfile(obj):
     return isinstance(obj, io.TextIOWrapper)
 
-def checkcfg(cfg):
+def isvalidcfg(cfg):
+    more = "Please refer to https://xtls.github.io/config/api.html for help."
     if not 'inbounds' in cfg:
-        raise ValueError("No 'inbounds' found in configuration file")
-    if not 'api' in cfg:
-        raise ValueError("No 'api' found in configuration file. Please refer to https://xtls.github.io/config/api.html for more information")
-
+        return (False, "No 'inbounds' found in configuration file")
+    try:
+        if not cfg['api']['tag'] == "api":
+            return (False, "Invalid api tag")
+        if not "HandlerService" in cfg['api']['services']:
+            return (False, "Please add 'HandlerService' to your api.services")
+    except KeyError:
+        return (False, "None or bad 'api' structure in configuration file. " + more)
+    for inb in cfg['inbounds']:
+        if 'tag' == "api":
+            passed = True
+            try:
+                if not inb['listen'] == "127.0.0.1":
+                    pass # Warning
+                if not inb['protocol'] == "dokodemo-door":
+                    return (False, "inbound.api protocol needs to be set to dokodemo-door")
+                if not "port" in inb:
+                    return (False, "No port was set in inbound.api")
+            except KeyError:
+                return (False, "bad api inbound structure. " + more)
+    if not passed:
+        return (False, "No api inbound was found. " + more)
+    try:
+        passed = False
+        for rule in cfg['routing']['rules']:
+            if rule['inboundTag'] == ["api"]:
+                passed = True
+                if not rule['outboundTag'] == "api":
+                    raise KeyError
+    except KeyError:
+        return (False, "Invalid routing for api. " + more)
+    if not passed:
+        return (False, "No api route was found. " + more)
+    return (True, "All good!")
 
 
 def islink(link):
@@ -349,4 +416,3 @@ def _handle_http_inb(ss, xs):
 
 def _if_exists(dic, key, default=None):
     return dic[key] if key in dic else default
-

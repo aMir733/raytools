@@ -63,27 +63,15 @@ def handle_disable(*args, disabled=True, **kwargs):
 def handle_enable(*args, **kwargs):
     handle_disable(*args, **kwargs, disabled=False)
 
-def handle_makecfg(*args, **kwargs):
-    if kwargs["output"] == "-":
-        kwargs["log"].info("Writing to stdout")
-        out_file = stdout
-    else:
-        out_file = open(kwargs["output"], "w")
-    if isinstance(kwargs["input"], str):
-        kwargs["log"].info("Reading configuration from " + kwargs["input"])
-        in_file = open(kwargs["input"], "r")
-    else:
-        kwargs["log"].info("Reading configuration from stdin...")
-    if not isopenedfile(in_file):
-        raise TypeError("Invalid type for input file")
-    users = kwargs["database"].exec(select(User.id, User.uuid).where(User.disabled == 0)).all()
+def handle_refresh(*args, **kwargs):
+    kwargs["input"] = readinfile(kwargs["input"])
+    users = kwargs["database"].exec(select(User.id, User.uuid).where(User.disabled == None)).all()
     users_len = len(users)
     kwargs["log"].info("Found {} users".format(users_len))
-    kwargs["log"].info("Writing config to " + kwargs["output"])
-    out_file.write(jsondumps(populatecfg(users, in_file), indent=4))
-
-def handle_restart(*args, **kwargs):
-    pass
+    cfg = parsecfg(kwargs["input"])
+    inbounds, port = getinbounds(cfg, users)
+    backend="v2ray" if kwargs["v2ray"] else "xray"
+    return (api(i, inbounds, backend=backend, port=port) for i in ("rmi", "adi"))
 
 def handle_addsrv(*args, **kwargs):
     if islink(kwargs["link"]):

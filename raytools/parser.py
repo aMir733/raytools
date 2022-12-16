@@ -56,7 +56,7 @@ class Raytools(Base):
         Raytools.parser_renew = self.subparser.add_parser('renew', help='Renew user\'s subscription')
         Raytools.parser_disable = self.subparser.add_parser('disable', help='Disable (deactivate) a user')
         Raytools.parser_enable = self.subparser.add_parser('enable', help='Enable (activate) a user')
-        Raytools.parser_makecfg = self.subparser.add_parser('makecfg', help='Populate the configuration file and output it to a file (or stdout)')
+        Raytools.parser_refresh = self.subparser.add_parser('refresh', help='Populate the configuration file and output it to a file (or stdout)')
         Raytools.parser_restart = self.subparser.add_parser('restart', help='Restart ray servers')
         Raytools.parser_addsrv = self.subparser.add_parser('addsrv', help='Add a new server')
         Raytools.parser_login = self.subparser.add_parser('login', help='Login a user to telegram')
@@ -92,14 +92,9 @@ class Raytools(Base):
             )
         # enable arguments
         self.parser_enable.add_argument('user', type=str, help=self.username_help)
-        # makecfg arguments
-        self.parser_makecfg.add_argument(
-            '-i', '--input', type=str, default=stdin,
-            help="Source configuration file. You could also use stdin for this -> cat config.json | script.py"
-            )
-        self.parser_makecfg.add_argument('-o', '--output', type=str, required=True, help="Destination configuration file. '-' for stdout.")
-        # restart arguments
-        self.parser_restart.add_argument('-s', '--service', type=str, required=True, help="Ray service name")
+        # refresh arguments
+        self.parser_refresh.add_argument('-i', '--input', type=str, default=stdin, help="Source configuration file. You could also use stdin for this -> cat config.json | raytools.py")
+        self.parser_refresh.add_argument('-2', '--v2ray', action="store_true", default=False, help="Use v2ray as the backed instead of xray")
         # addsrv arguments
         self.parser_addsrv.add_argument(
             'link', type=str, 
