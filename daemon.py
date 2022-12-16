@@ -35,6 +35,7 @@ def check_count(session, locks):
     locks_re(locks)
 
 def check_expire(session, locks):
+    handle_expired(expires="now")
     pass
 
 def init_args():
