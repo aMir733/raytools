@@ -54,7 +54,7 @@ def anytojson(inp):
                 return jsonload(f)
     if isopenedfile(inp):
         return jsonload(inp)
-    if not isinstance(cfg, dict):
+    if not isinstance(inp, dict):
         raise TypeError("Invalid Type")
     return inp
 

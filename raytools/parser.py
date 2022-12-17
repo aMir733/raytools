@@ -76,7 +76,7 @@ class Raytools(Base):
         self.parser_enable.add_argument('user', type=str, help=self.username_help)
         # refresh arguments
         self.parser_refresh.add_argument('-i', '--infile', type=str, default=stdin, help="Source configuration file. You could also use stdin for this -> cat config.json | raytools.py")
-        self.parser_refresh.add_argument('-2', '--v2ray', action="store_true", default=False, help="Use v2ray as the backed instead of xray")
+        #self.parser_refresh.add_argument('-2', '--v2ray', action="store_true", default=False, help="Use v2ray as the backed instead of xray")
         # addsrv arguments
         self.parser_addsrv.add_argument(
             'link', type=str, 
