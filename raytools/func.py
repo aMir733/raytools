@@ -77,7 +77,7 @@ def getinbounds(
     for index, inbound in enumerate(cfg['inbounds']):
         if not 'tag' in inbound:
             raise KeyError(f"No tag was found in {index}th inbound. Please add a tag to all of your inbounds before continuing")
-        if 'tag' == 'api':
+        if inbound['tag'] == 'api':
             api_port = inbound['port']
             continue
         if not 'protocol' in inbound or inbound['protocol'] != 'vmess' and inbound['protocol'] != 'vless':

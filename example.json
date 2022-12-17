@@ -4,28 +4,68 @@
     "error": "/var/log/ray/error.log",
     "loglevel": "warning"
   },
+  "stats": {},
+  "api": {
+    "tag": "api",
+    "services": [
+      "HandlerService",
+      "StatsService"
+    ]
+  },
+  "policy": {
+	  "levels": {
+		  "0": {
+			  "statsUserUplink": true,
+		  	  "statsUserDownlink": true
+		  }
+	  }
+  },
   "inbounds": [
     {
-      "listen": "/dev/shm/caddy-ws.socket,0666",
+      "listen": "/dev/shm/caddy-ws-test.socket,0666",
       "protocol": "vmess",
       "settings": {
         "clients": [
-          {
-            "email": "admin@raytools",
-            "level": 1,
-            "alterId": 0
-          }
-        ]
+		{
+			"email": "raytools",
+			"id": "db692255-cd10-4fb9-94f4-b297a105ef0b",
+			"level": 0,
+			"alterId": 0
+		}
+	]
       },
       "streamSettings": {
         "network": "ws",
-        "path": "/"
-      }
+        "wsSettings": {
+          "path": "/"
+        }
+      },
+      "tag": "inb1"
+    },
+    {
+      "listen": "127.0.0.1",
+      "port": 10085,
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1"
+      },
+      "tag": "api"
     }
   ],
   "outbound": {
     "protocol": "freedom",
     "settings": {}
+  },
+  "routing": {
+    "rules": [
+      {
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api",
+        "type": "field"
+      }
+    ]
   },
   "dns": {
     "servers": [
