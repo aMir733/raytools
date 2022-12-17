@@ -4,6 +4,7 @@ from raytools.parser import Daemon
 from raytools.log import *
 from apscheduler.schedulers.background import BackgroundScheduler
 from threading import Lock
+import logging
 
 
 def log_tail(filename, locks):
@@ -71,20 +72,22 @@ def main():
     # Logging
     configure_logging(
         logging,
-        level=,
+        level=0,
         format="%(asctime)s (%(name)s): %(message)s",
-        filename=output_log,
+        filename=args.output_log,
         )
     
+    logging.warning("test")
     # Scheduler
     scheduler = BackgroundScheduler()
     for filename in args.logs:
         scheduler.add_job(log_tail, args=(filename, (ulock,)))
     scheduler.add_job(check_count, 'interval', args=(session, (dlock, ulock, wlock)), seconds=30)
-    scheduler.add_job(clear_warnings, 'interval', args=(session, (wlock,)), minutes=5)
+    scheduler.add_job(clear_warnings, 'interval', args=(wlock,), minutes=5)
     scheduler.add_job(check_expire, 'interval', args=(session, (dlock,)), minutes=30)
     scheduler.add_job(check_traffic, 'interval', args=(session, (dlock,)), minutes=5)
     scheduler.start()
+    logging.info("Daemon started")
     
     # Run until interrupt
     try:

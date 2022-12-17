@@ -21,15 +21,13 @@ def handle_add(database, username, count, uuid, expires, telegram):
             expires=parse_date(expires),
             )
     database.add(user)
-    if telegram:
-        telegram = Telegram(
-                id=telegram,
-                user=User(username=username),
-                )
-        database.add(telegram)
     database.commit()
+    if telegram:
+        handle_login(database, user, telegram)
 
 def handle_get(database, user):
+    if isinstance(user, User):
+        return user
     col = "uuid" if isuuid(user) else "username"
     if isinstance(user, (list, tuple)):
         user, col = user
@@ -102,7 +100,7 @@ def handle_traffic(database):
     database.commit()
     api("statsquery", None, "-reset=true") # Reset the traffic
 
-def handle_login(database, user, telegram,):
+def handle_login(database, user, telegram):
     user = handle_get(database, user)
     telegram = Telegram(id=telegram, user=user)
     database.add(telegram)
