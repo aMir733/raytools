@@ -66,11 +66,15 @@ def handle_refresh(database, infile, v2ray=False):
     log.info("Found {} users".format(users_len))
     cfg = parsecfg(infile)
     inbounds, port = getinbounds(cfg, users)
-    inbounds = {
+    add_inbounds = {
         "inbounds": inbounds,
     }
+    rm_inbounds = {
+        "inbounds": [{"tag": inb["tag"]} for inb in inbounds]
+    }
     backend = "v2ray" if v2ray else "xray"
-    return [api(i, infile=jsondumps(inbounds).encode(), backend=backend, port=port) for i in ("rmi", "adi")]
+    api("rmi", infile=jsondumps(rm_inbounds).encode(), backend=backend, port=port)
+    api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, port=port)
 
 def handle_addsrv(database, link, inbound_index, name, address):
     if islink(link):
