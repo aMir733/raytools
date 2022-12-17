@@ -395,6 +395,7 @@ def isvalidcfg(cfg):
             return (False, "Please add 'HandlerService' and 'StatsService' to your api.services")
     except KeyError:
         return (False, "None or bad 'api' structure in configuration file. " + more)
+    passed = False
     for inb in cfg['inbounds']:
         if 'tag' == "api":
             passed = True
