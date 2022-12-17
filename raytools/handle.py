@@ -64,7 +64,7 @@ def handle_refresh(database, infile, v2ray=False):
     users = database.exec(select(User.id, User.count, User.uuid).where(User.disabled == None)).all()
     users_len = len(users)
     log.info("Found {} users".format(users_len))
-    cfg = parsecfg(input)
+    cfg = parsecfg(infile)
     inbounds, port = getinbounds(cfg, users)
     backend = "v2ray" if v2ray else "xray"
     return (api(i, inbounds, backend=backend, port=port) for i in ("rmi", "adi"))

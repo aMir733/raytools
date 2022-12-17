@@ -3,6 +3,8 @@ from os import environ as env
 from sys import stdin
 import logging
 
+log = logging.getLogger(__name__)
+
 class Base:
     # Frequently used help messages
     db_help = 'Full path to the database file. '
@@ -19,8 +21,6 @@ class Base:
         args = self.parser.parse_args()
         if not args.database:
             self.parser.error("Database not set. -d --database or RT_DATABASE=")
-        if args.func == refresh and not stdin or not args.infile:
-            self.parser.error("Infile not set. -d --infile")
         if "verbose" in args.__dict__:
             if args.quiet:
                 self.parser.error("Cannot be quiet (-q) and loud (-v) at the same time")

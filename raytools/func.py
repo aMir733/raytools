@@ -9,7 +9,9 @@ import os
 import time
 from base64 import b64encode, b64decode
 import queue, threading
+import logging
 
+log = logging.getLogger(__name__)
 
 def locks_aq(locks):
     return (lock.acquire() for lock in locks)
