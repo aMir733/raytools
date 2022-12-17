@@ -10,6 +10,3 @@ def configure_logging(logging, **kwargs, logs=()):
         logging.basicConfig(**kwargs)
         for delta_level, log in logs:
             logging.getLogger(log).setLevel(level + delta_level)
-
-                #level=level,
-                #format="[%(levelname)s] %(name)s: %(message)s",
