@@ -66,8 +66,11 @@ def handle_refresh(database, infile, v2ray=False):
     log.info("Found {} users".format(users_len))
     cfg = parsecfg(infile)
     inbounds, port = getinbounds(cfg, users)
+    inbounds = {
+        "inbounds": inbounds,
+    }
     backend = "v2ray" if v2ray else "xray"
-    return (api(i, inbounds, backend=backend, port=port) for i in ("rmi", "adi"))
+    return [api(i, infile=jsondumps(inbounds).encode(), backend=backend, port=port) for i in ("rmi", "adi")]
 
 def handle_addsrv(database, link, inbound_index, name, address):
     if islink(link):
@@ -96,7 +99,7 @@ def handle_expired(database, expired, disable=False):
     return users
 
 def handle_traffic(database):
-    out = api("statsquery", None)    
+    out = api("statsquery")    
     traffics = parse_treffic(out)
     for id, traffic in traffics.items():
         user = database.exec(select(User).where(User.id == int(id))).one()
@@ -105,7 +108,7 @@ def handle_traffic(database):
         user.traffic = user.traffic + traffic
         database.add(user)
     database.commit()
-    api("statsquery", None, "-reset=true") # Reset the traffic
+    api("statsquery", "-reset=true") # Reset the traffic
 
 def handle_login(database, user, telegram):
     user = handle_get(database, user)
