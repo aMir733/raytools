@@ -3,4 +3,4 @@ modules/customers.db-journal
 ref/
 */__pycache__/
 __pycache__/
-customers.db
+*.db

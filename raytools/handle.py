@@ -88,6 +88,18 @@ def handle_expired(database, expired, disable=False):
         database.commit()
     return users
 
+def handle_traffic(database):
+    out = api("statsquery", None)    
+    traffics = parse_treffic(out)
+    for id, traffic in traffics.items():
+        user = database.exec(select(User).where(User.id == int(id))).one()
+        if not isinstance(user.traffic, int):
+            user.traffic = 0
+        user.traffic = user.traffic + traffic
+        database.add(user)
+    database.commit()
+    api("statsquery", None, "-reset=true") # Reset the traffic
+
 def handle_login(database, user, telegram,):
     user = handle_get(database, user)
     telegram = Telegram(id=telegram, user=user)

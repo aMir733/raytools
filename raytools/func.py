@@ -80,6 +80,8 @@ def getinbounds(
             inbounds.append(inbound)
             continue
         passed = True
+        if not 'level' in default_client or default_client['level'] != 0:
+            raise KeyError("Please add a 'level' entry of 0 to your default user")
         inbounds.append(populateinb(inbound, clients, default_client))
     if not passed:
         raise ValueError("Could not find an appropriate inbound to use")
@@ -213,17 +215,31 @@ def cfgtolink( # Calls inbtolink for an inbound in cfg
         return inbtolink(cfg['inbounds'][inb])
     raise Exception("No inbound found in configuration file")
 
-def api(action, inbounds, backed="xray", port=10085):
-    command = [backend, 'api', action, '-s', f'127.0.0.1:{port}']
+def api(action, input, *args, backed="xray", port=10085):
+    command = [backend, 'api', action, '-s', f'127.0.0.1:{int(port)}', *args]
     out = subrun(
         command,
-        input=jsondumps(inbounds),
-        stdout=PIPE,
-        stderr=stdout,
+        input=input,
+        capture_output=True,
         )
     if out.returncode == 0:
         return out
-    raise Exception("api call failed '{0}' The output is as follows:\n{1}".format(' '.join(command), out.stdout))
+    raise Exception("api call failed '{0}' The output is as follows:\nstdout:\n{1}\nstderr:\n{2}".format(' '.join(command), out.stdout, out.stderr))
+
+def parse_traffic(js):
+    seperate = ">>>"
+    js = anytojson(js)
+    users = {}
+    for entry in js['stat']:
+        name = entry['name'].split(seperate)
+        if name[0] != "user" or name[2] != "traffic" or name[3] != "downlink" and name[3] != "uplink":
+            continue
+        try:
+            users[name[1]] = users[name[1]] + int(entry['value'])
+        except KeyError:
+            users[name[1]] = entry['value']
+    return users
+
 
 def readinfile(infile):
     if not isopenedfile(infile):
@@ -351,11 +367,18 @@ def isvalidcfg(cfg):
     more = "Please refer to https://xtls.github.io/config/api.html for help."
     if not 'inbounds' in cfg:
         return (False, "No 'inbounds' found in configuration file")
+    if not 'stats' in cfg:
+        return (False, "No 'stats' found in configuration file")
+    try:
+        if not cfg['policy']['levels']['0']['statsUserUplink'] == True or not cfg['policy']['levels']['0']['statsUserDownlink'] == True:
+            return (False, 'Please set statsUserUplink and statsUserDownlink to true in your configuration file')
+    except KeyError:
+        return (False, "Invalid 'policy' entry. " + more)
     try:
         if not cfg['api']['tag'] == "api":
             return (False, "Invalid api tag")
-        if not "HandlerService" in cfg['api']['services']:
-            return (False, "Please add 'HandlerService' to your api.services")
+        if not "HandlerService" in cfg['api']['services'] or not "StatsService" in cfg['api']['services']:
+            return (False, "Please add 'HandlerService' and 'StatsService' to your api.services")
     except KeyError:
         return (False, "None or bad 'api' structure in configuration file. " + more)
     for inb in cfg['inbounds']:

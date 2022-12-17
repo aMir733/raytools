@@ -4,12 +4,11 @@ from raytools.parser import Daemon
 from raytools.log import *
 from apscheduler.schedulers.background import BackgroundScheduler
 from threading import Lock
-from sys import argv
 
 
 def log_tail(filename, locks):
     global users
-    print("tailing: " + filename)
+    logging.info("Tailing: " + filename)
     for line in tail(open(filename)):
         user = log_parseline(line)
         print(users)
@@ -26,18 +25,18 @@ def check_count(session, locks):
     locks_aq(locks)
     for user, ips in users.items():
         l = len(ips)
-        try:
-            if not int(user.split("@")[0]) < l:
-                continue
-        except ValueError:
-            pass
-        print("{0}: {1} -> {2}".format(user, l, ' '.join(ips)))
+
     users = {}
     locks_re(locks)
 
 def check_expire(session, locks):
     locks_aq(locks)
     handle_expired(session, expires="now", disable=True)
+    locks_re(locks)
+
+def check_traffic(session, locks):
+    locks_aq(locks) 
+    handle_traffic(session)
     locks_re(locks)
 
 def init_args():
@@ -50,6 +49,8 @@ def main():
     session = db.session()
     global users
     users = {}
+    global warnings
+    warnings = {}
     
     # Locks
     dlock = Lock()
@@ -65,6 +66,7 @@ def main():
         scheduler.add_job(log_tail, args=(filename, (ulock,)))
     scheduler.add_job(check_count, 'interval', args=(session, (dlock, ulock)), seconds=30)
     scheduler.add_job(check_expire, 'interval', args=(session, (dlock,)), minutes=30)
+    scheduler.add_job(check_traffic, 'interval', args=(session, (dlock,)), minutes=5)
     scheduler.start()
     
     # Run until interrupt

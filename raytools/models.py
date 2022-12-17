@@ -13,6 +13,7 @@ class User(Base, table = True):
     count: int
     uuid: str = Field(sa_column_kwargs={"unique": True})
     expires: int
+    traffic: Optional[int] = Field(default=0)
     disabled: Optional[str] = Field(default=None)
     telegrams: List["Telegram"] = Relationship(back_populates="user")
 
