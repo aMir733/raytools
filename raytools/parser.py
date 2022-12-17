@@ -19,6 +19,8 @@ class Base:
         args = self.parser.parse_args()
         if not args.database:
             self.parser.error("Database not set. -d --database or RT_DATABASE=")
+        if args.func == refresh and not stdin or not args.infile:
+            self.parser.error("Infile not set. -d --infile")
         if "verbose" in args.__dict__:
             if args.quiet:
                 self.parser.error("Cannot be quiet (-q) and loud (-v) at the same time")
