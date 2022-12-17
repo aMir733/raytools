@@ -1,4 +1,4 @@
-import jdatetime # pip3 install jdatetime
+from jdatetime import datetime, date as jdate # pip3 install jdatetime
 from zoneinfo import ZoneInfo
 from subprocess import run as subrun, PIPE
 from uuid import uuid4, UUID
@@ -94,11 +94,8 @@ def populateinb(
     for client in clients:
         inb['settings']['clients'].append({
             **client_defaults,
-            "id": client[2], # uuid
-            "email": "{}@{}".format(
-                str(client[1]),
-                str(client[0]).zfill(max_digits),
-                )
+            "id": client[1],
+            "email": str(client[0]).zfill(max_digits)
         })
     return inb
 
@@ -288,13 +285,13 @@ def isuuid(uuid):
     return True
 
 def timenow():
-    return jdatetime.datetime.now(tz=ZoneInfo("Asia/Tehran")).replace(microsecond=0)
+    return datetime.now(tz=ZoneInfo("Asia/Tehran")).replace(microsecond=0)
 
 def timemake(date):
-    return jdatetime.datetime(*[int(i) for i in date])
+    return datetime(*[int(i) for i in date])
 
 def timedelta(date, days): # Increment/Decrement days in timestamp or datetime object. Returns timestamp
-    if isinstance(date, jdatetime.datetime):
+    if isinstance(date, datetime):
         date = timetostamp(date)
     if isinstance(date, int):
         return date + days * 86400
@@ -307,18 +304,18 @@ def strtotime(date): # Converts standard ISO8601 string to datetime object
     if not recompile(r"(\d{4})-(\d{2})-(\d{2})").match(date):
         raise ValueError(f"Invalid isoformat string: {date}")
     y, m, d = list(map(int, date.split('-')))
-    return jdatetime.date(y, m, d)
+    return jdate(y, m, d)
 
 def timetostr(date): # Converts datetime object to standard ISO8601 string ("YYYY-MM-DD HH:MM:SS.SSS")
-    if not isinstance(date, jdatetime.datetime):
+    if not isinstance(date, datetime):
         raise TypeError("Invalid Type")
     return date.isoformat().split("T")[0]
 
 def stamptotime(date): # Converts timestamp to a datetime object
-    return jdatetime.datetime.fromtimestamp(date)
+    return datetime.fromtimestamp(date)
 
 def timetostamp(date): # Converts datetime object to timestamp
-    if not isinstance(date, jdatetime.datetime):
+    if not isinstance(date, datetime):
         raise TypeError("Invalid Type")
     return int(date.timestamp())
 
@@ -333,11 +330,13 @@ def matchword(text):
     return recompile(r'^[0-9A-Za-z]$').match(text)
 
 def parse_date(date):
+    if isinstance(date, jdate):
+        return timetostamp(date)
     if not isinstance(date, str):
         raise TypeError("Invalid type")
     if date == "now":
         return timetostamp(timenow())
-    m = recompile(r'(\+|\-)\d+').match(date)
+    m = recompile(r'^(\+|\-)?\d+$').match(date)
     if m:
         return timedelta(timetostamp(timenow()), int(m[0]))
     date = date.split("/")

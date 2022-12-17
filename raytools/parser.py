@@ -83,6 +83,7 @@ class Raytools(Base):
         self.parser_addsrv.add_argument('-i', '--inbound-index', type=str, default=None, help="Only required if you have several inbounds in your configuration file")
         # expired argumenrts
         self.parser_expired.add_argument('-e', '--expired', type=str, default="now", help=self.date_help + ' Expire date.')
+        self.parser_expired.add_argument('-d', '--disable', action="store_true", default=False, help='Also disable the users who have expired')
         # login arguments
         self.parser_login.add_argument('user', type=str, help=self.username_new_help)
         self.parser_login.add_argument('-t', '--telegram', type=int, required=True, help='User\'s Telegram ID')

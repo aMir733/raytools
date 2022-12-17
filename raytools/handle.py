@@ -76,10 +76,17 @@ def handle_addsrv(database, link, inbound_index, name, address):
     database.add(server)
     database.commit()
 
-def handle_expired(database, expired):
+def handle_expired(database, expired, disable=False):
     date = parse_date(expired)
     log.info("Showing users that expire before " + str(stamptotime(date)))
-    return database.exec(select(User).where(User.expires > date)).all()
+    users = database.exec(select(User).where(User.expires < date, User.disabled == None)).all()
+    if disable:
+        log.warning("Disabling {} users".format(len(users)))
+        for user in users:
+            user.disabled = "expired"
+            database.add(user)
+        database.commit()
+    return users
 
 def handle_login(database, user, telegram,):
     user = handle_get(database, user)

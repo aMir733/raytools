@@ -1,6 +1,7 @@
 from raytools.func import *
 from raytools.db import Database
 from raytools.parser import Daemon
+from raytools.log import *
 from apscheduler.schedulers.background import BackgroundScheduler
 from threading import Lock
 from sys import argv
@@ -35,12 +36,13 @@ def check_count(session, locks):
     locks_re(locks)
 
 def check_expire(session, locks):
-    handle_expired(expires="now")
-    pass
+    locks_aq(locks)
+    handle_expired(session, expires="now", disable=True)
+    locks_re(locks)
 
 def init_args():
     parser = Daemon()
-    return parser.parse(logs=(('sqlalchemy.engine', 20),), default=30)
+    return parser.parse()
 
 def main():
     args = init_args()
@@ -53,12 +55,16 @@ def main():
     dlock = Lock()
     ulock = Lock()
     
+    # Logging
+    verb = calc_verb(args.__dict__.pop('verbose'), args.__dict__.pop('quiet'), 30)
+    configure_logging(logging, verb, ((10, 'sqlalchemy.engine'),))
+    
     # Scheduler
     scheduler = BackgroundScheduler()
     for filename in args.logs:
         scheduler.add_job(log_tail, args=(filename, (ulock,)))
     scheduler.add_job(check_count, 'interval', args=(session, (dlock, ulock)), seconds=30)
-    scheduler.add_job(check_expire, 'interval', args=(session, (dlock,)), hours=1)
+    scheduler.add_job(check_expire, 'interval', args=(session, (dlock,)), minutes=30)
     scheduler.start()
     
     # Run until interrupt
