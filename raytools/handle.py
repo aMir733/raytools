@@ -10,7 +10,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-def handle_add(database, username, count, uuid, expires, telegram):
+def handle_add(database, username, count, expires, uuid=None, telegram=None):
     uuid = uuid if uuid else make_uuid()
     if not isuuid(uuid):
         raise ValueError(f"'{uuid}' is not a valid UUID")
@@ -36,6 +36,13 @@ def handle_get(database, user):
             ).one()
     return user
 
+def handle_uuid(database, user, uuid=None):
+    uuid = uuid if uuid else make_uuid()
+    user = handle_get(database, user)
+    user.uuid = uuid
+    database.add(user)
+    database.commit()
+    
 def handle_renew(database, user, expires):
     user = handle_get(database, user)
     user.expires = parse_date(expires)

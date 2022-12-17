@@ -1,5 +1,6 @@
 from raytools.func import *
 from raytools.db import Database
+from raytools.models import *
 from raytools.parser import Daemon
 from raytools.log import *
 from apscheduler.schedulers.background import BackgroundScheduler

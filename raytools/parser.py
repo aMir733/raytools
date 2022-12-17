@@ -36,6 +36,7 @@ class Raytools(Base):
         Raytools.parser_add = self.subparser.add_parser('add', help='Add a new user')
         Raytools.parser_get = self.subparser.add_parser('get', help='Get user\'s client information')
         Raytools.parser_renew = self.subparser.add_parser('renew', help='Renew user\'s subscription')
+        Raytools.parser_uuid = self.subparser.add_parser('uuid', help='Modify user\'s UUID')
         Raytools.parser_disable = self.subparser.add_parser('disable', help='Disable (deactivate) a user')
         Raytools.parser_enable = self.subparser.add_parser('enable', help='Enable (activate) a user')
         Raytools.parser_refresh = self.subparser.add_parser('refresh', help='Populate the configuration file and output it to a file (or stdout)')
@@ -62,6 +63,9 @@ class Raytools(Base):
         # renew arguments
         self.parser_renew.add_argument('user', type=str, help=self.username_help)
         self.parser_renew.add_argument('-e', '--expires', type=str, required=True, help=self.date_help + ' Subscription\'s end date.')
+        # uuid arguments
+        self.parser_uuid.add_argument('user', type=str, help=self.username_help)
+        self.parser_uuid.add_argument('-u', '--uuid', type=str, default=None, help='UUID to use for this user')
         # disable arguments
         self.parser_disable.add_argument('user', type=str, help=self.username_help)
         self.parser_disable.add_argument(

@@ -356,6 +356,8 @@ def matchword(text):
     return recompile(r'^[0-9A-Za-z]$').match(text)
 
 def parse_date(date):
+    if isinstance(date, int):
+        return date
     if isinstance(date, jdate):
         return timetostamp(date)
     if not isinstance(date, str):
