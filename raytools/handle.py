@@ -49,15 +49,14 @@ def handle_renew(database, user, expires):
     database.add(user)
     database.commit()
 
-def handle_disable(database, user, reason, disabled=True):
-    reason = reason if disabled else None
+def handle_disable(database, user, reason=None):
     user = handle_get(database, user)
     user.disabled = reason
     database.add(user)
     database.commit()
 
 def handle_enable(database, user):
-    handle_disable(database, user, disabled=False)
+    handle_disable(database, user, reason=None)
 
 def handle_refresh(database, infile, v2ray=False):
     infile = readinfile(infile)
