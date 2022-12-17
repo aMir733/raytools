@@ -397,7 +397,7 @@ def isvalidcfg(cfg):
         return (False, "None or bad 'api' structure in configuration file. " + more)
     passed = False
     for inb in cfg['inbounds']:
-        if 'tag' == "api":
+        if inb['tag'] == "api":
             passed = True
             try:
                 if not inb['listen'] == "127.0.0.1":
