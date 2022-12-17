@@ -30,9 +30,11 @@ def handle_add(database, username, count, uuid, expires, telegram):
     database.commit()
 
 def handle_get(database, user):
-    table = "uuid" if isuuid(user) else "username"
+    col = "uuid" if isuuid(user) else "username"
+    if isinstance(user, (list, tuple)):
+        user, col = user
     user = database.exec(
-            select(User).where(getattr(User, table) == user),
+            select(User).where(getattr(User, col) == user),
             ).one()
     return user
 
@@ -54,7 +56,7 @@ def handle_enable(database, user):
 
 def handle_refresh(database, infile, v2ray=False):
     infile = readinfile(infile)
-    users = database.exec(select(User.id, User.uuid).where(User.disabled == None)).all()
+    users = database.exec(select(User.id, User.count, User.uuid).where(User.disabled == None)).all()
     users_len = len(users)
     log.info("Found {} users".format(users_len))
     cfg = parsecfg(input)

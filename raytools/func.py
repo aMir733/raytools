@@ -35,6 +35,16 @@ def log_parseline(line):
     except IndexError:
         return
 
+def counter(users):
+    final = []
+    for user, ips in users.items():
+        count, id = user.split("@")
+        if len(ips) <= count:
+            continue
+        final.append(user)
+    return final
+        
+
 def anytojson(inp):
     if isinstance(inp, str):
         try:
@@ -96,8 +106,8 @@ def populateinb(
     for client in clients:
         inb['settings']['clients'].append({
             **client_defaults,
-            "id": client[1],
-            "email": str(client[0]).zfill(max_digits)
+            "id": client[2],
+            "email": "{}@{}".format(client[1], str(client[0]).zfill(max_digits))
         })
     return inb
 

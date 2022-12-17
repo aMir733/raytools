@@ -25,7 +25,7 @@ def init_db(database):
 def main():
     args = init_args()
     verb = calc_verb(args.__dict__.pop('verbose'), args.__dict__.pop('quiet'), 30)
-    configure_logging(logging, verb, ((10, 'sqlalchemy.engine'),))
+    configure_logging(logging, log=((10, 'sqlalchemy.engine'),), level=verb, format="[%(levelname)s] %(name)s: %(message)s")
     db = Database(args.__dict__.pop('database'))
     session = db.session()
     r = args.__dict__.pop('func')(**vars(args), database=session)

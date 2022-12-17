@@ -11,7 +11,6 @@ def log_tail(filename, locks):
     logging.info("Tailing: " + filename)
     for line in tail(open(filename)):
         user = log_parseline(line)
-        print(users)
         if user:
             locks_aq(locks)
             try:
@@ -21,23 +20,36 @@ def log_tail(filename, locks):
             locks_re(locks)
 
 def check_count(session, locks):
-    global users
+    global users, warnings
     locks_aq(locks)
-    for user, ips in users.items():
-        l = len(ips)
-
+    for user in counter(users):
+        try:
+            warnings[user] = warnings[user] + 1
+        except KeyError:
+            warnings[user] = 1            
+        if warnings[user] > 5:
+            logging.warning("DIS/COUNT: '{}'".format(user))
+            handle_disable(session, (int(user), "id"))
     users = {}
     locks_re(locks)
 
 def check_expire(session, locks):
     locks_aq(locks)
-    handle_expired(session, expires="now", disable=True)
+    users = handle_expired(session, expires="now", disable=True)
+    logging.warning("DIS/EXPIRED: '{}'".format(','.join([i[0] for i in users])))
     locks_re(locks)
 
 def check_traffic(session, locks):
     locks_aq(locks) 
     handle_traffic(session)
     locks_re(locks)
+    
+def clear_warnings(locks):
+    global warnings
+    locks_aq(locks) 
+    warnings = {}
+    locks_re(locks)
+
 
 def init_args():
     parser = Daemon()
@@ -47,24 +59,29 @@ def main():
     args = init_args()
     db = Database(args.__dict__.pop('database'))
     session = db.session()
-    global users
+    global users, warnings
     users = {}
-    global warnings
     warnings = {}
     
     # Locks
     dlock = Lock()
     ulock = Lock()
+    wlock = Lock()
     
     # Logging
-    verb = calc_verb(args.__dict__.pop('verbose'), args.__dict__.pop('quiet'), 30)
-    configure_logging(logging, verb, ((10, 'sqlalchemy.engine'),))
+    configure_logging(
+        logging,
+        level=,
+        format="%(asctime)s (%(name)s): %(message)s",
+        filename=output_log,
+        )
     
     # Scheduler
     scheduler = BackgroundScheduler()
     for filename in args.logs:
         scheduler.add_job(log_tail, args=(filename, (ulock,)))
-    scheduler.add_job(check_count, 'interval', args=(session, (dlock, ulock)), seconds=30)
+    scheduler.add_job(check_count, 'interval', args=(session, (dlock, ulock, wlock)), seconds=30)
+    scheduler.add_job(clear_warnings, 'interval', args=(session, (wlock,)), minutes=5)
     scheduler.add_job(check_expire, 'interval', args=(session, (dlock,)), minutes=30)
     scheduler.add_job(check_traffic, 'interval', args=(session, (dlock,)), minutes=5)
     scheduler.start()
