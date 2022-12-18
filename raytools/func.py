@@ -242,13 +242,17 @@ def parse_traffic(js):
     js = anytojson(js)
     users = {}
     for entry in js['stat']:
-        name = entry['name'].split(seperate)
-        if name[0] != "user" or name[2] != "traffic" or name[3] != "downlink" and name[3] != "uplink":
+        try:
+            kind, user, traffic, mode = entry['name'].split(seperate)
+        except (KeyError, ValueError):
+            continue
+        user = user.split("@")[1]
+        if kind != "user" or traffic != "traffic" or mode != "downlink" and mode != "uplink":
             continue
         try:
-            users[name[1]] = int(users[name[1]]) + int(entry['value'])
+            users[user] = int(users[user]) + int(entry['value'])
         except KeyError:
-            users[name[1]] = int(entry['value'])
+            users[user] = int(entry['value'])
     return users
 
 
