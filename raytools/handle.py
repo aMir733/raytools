@@ -73,14 +73,16 @@ def handle_refresh(database, infile, v2ray=False):
     }
     backend = "v2ray" if v2ray else "xray"
     max_tries = 10
-    log.info("Initiated api rmi with max retry of " + str(max_tries))
+    log.info("Initiated API rmi with max retry of " + str(max_tries))
     for i in range(max_tries):
         rmi = api("rmi", infile=jsondumps(rm_inbounds).encode(), backend=backend, port=port)
         if "failed to dial" in rmi.stderr.decode():
             raise Exception("API failed because we could not reach it")
         if rmi.returncode == 0 or "not enough information for making a decision" in rmi.stderr.decode():
             break
-        log.error("Retrying because of an API error: " + rmi.stderr.decode())
+        log.warning("Retried because of an API error: " + rmi.stderr.decode())
+        if i + 1 == max_tries:
+            log.error("API rmi failed. Let us hope this doesn't mean anything :)")
     adi = api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, port=port)
 
 def handle_addsrv(database, link, inbound_index, name, address):
