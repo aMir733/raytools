@@ -113,7 +113,7 @@ def handle_expired(database, expired, disable=False):
 
 def handle_traffic(database):
     out = api("statsquery")    
-    traffics = parse_treffic(out)
+    traffics = parse_traffic(out)
     for id, traffic in traffics.items():
         user = database.exec(select(User).where(User.id == int(id))).one()
         if not isinstance(user.traffic, int):
