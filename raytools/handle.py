@@ -73,20 +73,20 @@ def handle_refresh(database, configuration, systemd, v2ray=False):
         "inbounds": [{"tag": inb["tag"]} for inb in inbounds]
     }
     backend = "v2ray" if v2ray else "xray"
-    max_tries = 2
+    max_tries = 8
     log.info("Initiated API rmi with max retry of " + str(max_tries))
     for i in range(max_tries):
-        rmi = api("rmi", infile=jsondumps(rm_inbounds).encode(), backend=backend, timeout=30, port=port)
+        rmi = api("rmi", infile=jsondumps(rm_inbounds).encode(), backend=backend, timeout=2, port=port)
         if "failed to dial" in rmi.stderr.decode():
             raise Exception("API failed because we could not reach it")
-        if rmi.returncode == 0 or "not enough information for making a decision" in rmi.stderr.decode():
+        if "not enough information for making a decision" in rmi.stderr.decode():
             break
         log.warning("Retried because of an API error: " + rmi.stderr.decode())
         if i + 1 == max_tries:
             log.error("Restarting systemd because xray crashed")
             systemd_restart(systemd)
     sleep(1)
-    adi = api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, timeout=30, port=port)
+    adi = api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, timeout=2, port=port)
     if adi.returncode == 0:
         log.info("Successfully refreshed")
         return True
