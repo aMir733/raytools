@@ -10,6 +10,8 @@ from time import sleep
 import logging
 
 log = logging.getLogger(__name__)
+CONNFIGURATION = "/usr/local/etc/xray/raytools.json"
+SYSTEMD = "xray@raytools"
 
 def handle_add(database, username, count, expires, uuid=None, telegram=None):
     uuid = uuid if uuid else make_uuid()
@@ -23,6 +25,7 @@ def handle_add(database, username, count, expires, uuid=None, telegram=None):
             )
     database.add(user)
     database.commit()
+    handle_refresh(database)
     if telegram:
         handle_login(database, user, telegram)
 
@@ -43,23 +46,26 @@ def handle_uuid(database, user, uuid=None):
     user.uuid = uuid
     database.add(user)
     database.commit()
+    handle_refresh(database)
     
 def handle_renew(database, user, expires):
     user = handle_get(database, user)
     user.expires = parse_date(expires)
     database.add(user)
     database.commit()
+    handle_refresh(database)
 
 def handle_disable(database, user, reason="disabled"):
     user = handle_get(database, user)
     user.disabled = reason
     database.add(user)
     database.commit()
+    handle_refresh(database)
 
 def handle_enable(database, user):
     handle_disable(database, user, reason=None)
 
-def handle_refresh(database, configuration, systemd, v2ray=False):
+def handle_refresh(database, configuration=CONFIGURATION, systemd=SYSTEMD, v2ray=False):
     configuration = readinfile(configuration)
     users = database.exec(select(User.id, User.count, User.uuid).where(User.disabled == None)).all()
     users_len = len(users)
@@ -119,6 +125,7 @@ def handle_expired(database, expired, disable=False):
             user.disabled = "expired"
             database.add(user)
         database.commit()
+        handle_refresh(database)
         return
     return users
 
@@ -136,6 +143,7 @@ def handle_traffic(database):
         user.traffic = user.traffic + traffic
         database.add(user)
     database.commit()
+    handle_refresh(database)
     api("statsquery", "-reset=true") # Reset the traffic
 
 def handle_login(database, user, telegram):
