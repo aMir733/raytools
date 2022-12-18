@@ -13,6 +13,8 @@ def log_tail(filename, locks):
     global users
     logging.info("Tailing: " + filename)
     for line in tail_F(filename):
+        if not line:
+            continue
         user, ip = log_parseline(line)
         if user and ip:
             locks_aq(locks)
