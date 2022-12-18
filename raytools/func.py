@@ -40,7 +40,7 @@ def log_parseline(line):
 def counter(users):
     final = []
     for user, ips in users.items():
-        log.debug("processing {} with {}".format(user, ' '.join(ips))
+        log.debug("processing {} with {}".format(user, ' '.join(ips)))
         count, id = user.split("@")
         if len(ips) <= count:
             continue
