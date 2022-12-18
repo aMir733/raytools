@@ -234,9 +234,8 @@ def api(action, *args, infile=None, backend="xray", port=10085):
         input=infile,
         capture_output=True,
         )
-    if out.returncode == 0:
-        return out
-    raise Exception("api call failed '{0}' The output is as follows:\n--stdout:\n{1}\n--stderr:\n{2}".format(' '.join(command), out.stdout.decode(), out.stderr.decode()))
+    return out
+    #raise Exception("api call failed '{0}' The output is as follows:\n--stdout:\n{1}\n--stderr:\n{2}".format(' '.join(command), out.stdout.decode(), out.stderr.decode()))
 
 def parse_traffic(js):
     seperate = ">>>"

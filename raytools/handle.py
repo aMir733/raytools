@@ -72,8 +72,11 @@ def handle_refresh(database, infile, v2ray=False):
         "inbounds": [{"tag": inb["tag"]} for inb in inbounds]
     }
     backend = "v2ray" if v2ray else "xray"
-    api("rmi", infile=jsondumps(rm_inbounds).encode(), backend=backend, port=port)
-    api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, port=port)
+    for i in range(10):
+        rmi = api("rmi", infile=jsondumps(rm_inbounds).encode(), backend=backend, port=port)
+        if rmi.returncode == 0 or "not enough information for making a decision" in rmi.stderr:
+            break
+    adi = api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, port=port)
 
 def handle_addsrv(database, link, inbound_index, name, address):
     if islink(link):
