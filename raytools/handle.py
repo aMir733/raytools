@@ -58,7 +58,7 @@ def handle_disable(database, user, reason=None):
 def handle_enable(database, user):
     handle_disable(database, user, reason=None)
 
-def handle_refresh(database, configuration, v2ray=False):
+def handle_refresh(database, configuration, systemd, v2ray=False):
     configuration = readinfile(configuration)
     users = database.exec(select(User.id, User.count, User.uuid).where(User.disabled == None)).all()
     users_len = len(users)
@@ -82,7 +82,8 @@ def handle_refresh(database, configuration, v2ray=False):
             break
         log.warning("Retried because of an API error: " + rmi.stderr.decode())
         if i + 1 == max_tries:
-            log.error("API rmi failed. Let us hope this doesn't mean anything :)")
+            log.error("Restarting systemd because xray crashed")
+            systemd_restart(systemd)
     adi = api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, port=port)
     if adi.returncode == rmi.returncode == 0:
         log.info("Successfully refreshed")

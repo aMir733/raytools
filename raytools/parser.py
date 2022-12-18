@@ -79,6 +79,7 @@ class Raytools(Base):
         self.parser_enable.add_argument('user', type=str, help=self.username_help)
         # refresh arguments
         self.parser_refresh.add_argument('-c', '--configuration', type=str, default=stdin, help=self.configuration_help)
+        self.parser_refresh.add_argument('-s', '--systemd', type=str, required=True, help="Xray\'s systemd service name (Just in case)")
         #self.parser_refresh.add_argument('-2', '--v2ray', action="store_true", default=False, help="Use v2ray as the backed instead of xray")
         # addsrv arguments
         self.parser_addsrv.add_argument(
@@ -108,5 +109,6 @@ class Daemon(Base):
         #self.parser.add_argument('-q', '--quiet', action="store_true", help="quiet output")
         #self.parser.add_argument('-v', '--verbose', action="count", help="verbosity level")
         self.parser.add_argument('-c', '--configuration', type=str, required=True, help=self.configuration_help)
+        self.parser.add_argument('-s', '--systemd', type=str, required=True, help="Xray\'s systemd service name (Just in case)")
         self.parser.add_argument('-o', '--output-log', default="/var/log/raytools.log", help="Where to output log files")
         self.parser.add_argument('logs', type=str, nargs='+', help='Log files to watch for user activity')

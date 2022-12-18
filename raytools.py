@@ -22,8 +22,8 @@ def main():
     args = init_args()
     verb = calc_verb(args.__dict__.pop('verbose'), args.__dict__.pop('quiet'), 30)
     configure_logging(logging, logs=((10, 'sqlalchemy.engine'),), level=verb, format="[%(levelname)s] %(name)s: %(message)s")
-    if args.func == handle_refresh and not isinstance(args.infile, str):
-        log.warning("No infile was specified in the arguments so, reading from stdin...")
+    if args.func == handle_refresh and not isinstance(args.configuration, str):
+        log.warning("No configuration was specified in the arguments so, reading from stdin...")
     db = Database(args.__dict__.pop('database'))
     session = db.session()
     r = args.__dict__.pop('func')(**vars(args), database=session)

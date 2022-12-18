@@ -54,7 +54,7 @@ def check_traffic(session, locks=()):
     handle_traffic(session)
     locks_re(locks)
     
-def refresh(session, cfg_path, db_path, locks=()):
+def refresh(session, cfg_path, systemd, db_path, locks=()):
     global db_sha
     locks_aq(locks)
     with open(db_path, "rb") as f:
@@ -62,7 +62,7 @@ def refresh(session, cfg_path, db_path, locks=()):
     if current == db_sha:
         log.info("Skipped refreshing")
     else:
-        if handle_refresh(session, cfg_path):
+        if handle_refresh(session, cfg_path, systemd):
             db_sha = current
     locks_re(locks)
     
@@ -80,6 +80,7 @@ def main():
     args = init_args()
     db_path = args.__dict__.pop('database')
     cfg_path = args.configuration
+    systemd = args.systemd
     db = Database(db_path)
     session = db.session()
     global users, warnings, db_sha
@@ -101,7 +102,7 @@ def main():
         )
     
     # Pre scheduler jobs
-    refresh(session, cfg_path, db_path, locks=())    
+    refresh(session, cfg_path, systemd, db_path, locks=())    
     # Scheduler
     scheduler = BackgroundScheduler({'apscheduler.timezone': 'Asia/Tehran'})
     for filename in args.logs:
@@ -110,7 +111,7 @@ def main():
     scheduler.add_job(clear_warnings, 'interval', kwargs={'locks': (wlock,)}, minutes=5)
     scheduler.add_job(check_expire, 'interval', args=(session,), kwargs={'locks': (dlock,)}, minutes=30)
     scheduler.add_job(check_traffic, 'interval', args=(session,), kwargs={'locks': (dlock,)}, minutes=5)
-    scheduler.add_job(refresh, 'interval', args=(session, cfg_path, db_path), kwargs={'locks': (dlock,)}, seconds=25)
+    scheduler.add_job(refresh, 'interval', args=(session, cfg_path, systemd, db_path), kwargs={'locks': (dlock,)}, seconds=25)
     scheduler.start()
     logging.info("Daemon started")
     
