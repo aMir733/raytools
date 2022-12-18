@@ -6,13 +6,15 @@ from raytools.log import *
 from raytools.handle import *
 from apscheduler.schedulers.background import BackgroundScheduler
 from threading import Lock
+from sh import tail
 import logging
+
 
 
 def log_tail(filename, locks):
     global users
     logging.info("Tailing: " + filename)
-    for line in tail(open(filename)):
+    for line in tail_F(filename):
         user, ip = log_parseline(line)
         if user and ip:
             locks_aq(locks)
@@ -39,7 +41,7 @@ def check_count(session, locks):
 
 def check_expire(session, locks):
     locks_aq(locks)
-    users = handle_expired(session, expires="now", disable=True)
+    users = handle_expired(session, expired="now", disable=True)
     logging.warning("DIS/EXPIRED: '{}'".format(','.join([i[0] for i in users])))
     locks_re(locks)
 

@@ -28,6 +28,33 @@ def tail(f): # http://www.dabeaz.com/generators/
             continue
         yield line
        
+def tail_F(some_file): # https://stackoverflow.com/a/12523119
+    first_call = True
+    while True:
+        try:
+            with open(some_file) as infile:
+                if first_call:
+                    infile.seek(0, 2)
+                    first_call = False
+                latest_data = infile.read()
+                while True:
+                    if '\n' not in latest_data:
+                        latest_data += infile.read()
+                        if '\n' not in latest_data:
+                            yield ''
+                            if not os.path.isfile(some_file):
+                                break
+                            continue
+                    latest_lines = latest_data.split('\n')
+                    if latest_data[-1] != '\n':
+                        latest_data = latest_lines[-1]
+                    else:
+                        latest_data = infile.read()
+                    for line in latest_lines[:-1]:
+                        yield line + '\n'
+        except IOError:
+            yield ''
+
 def log_parseline(line):
     try:
         ip, mode, user = [line.strip().split(' ')[i] for i in [2, 3, 6]]
