@@ -3,6 +3,7 @@ from raytools.db import Database
 from raytools.models import *
 from raytools.parser import Daemon
 from raytools.log import *
+from raytools.handle import *
 from apscheduler.schedulers.background import BackgroundScheduler
 from threading import Lock
 import logging
@@ -85,7 +86,7 @@ def main():
     for filename in args.logs:
         scheduler.add_job(log_tail, args=(filename, (ulock,)))
     scheduler.add_job(check_count, 'interval', args=(session, (dlock, ulock, wlock)), seconds=30)
-    scheduler.add_job(clear_warnings, 'interval', args=(wlock,), minutes=5)
+    scheduler.add_job(clear_warnings, 'interval', args=((wlock,),), minutes=5)
     scheduler.add_job(check_expire, 'interval', args=(session, (dlock,)), minutes=30)
     scheduler.add_job(check_traffic, 'interval', args=(session, (dlock,)), minutes=5)
     scheduler.start()
