@@ -40,7 +40,7 @@ def check_count(session, locks=()):
         log.info("WAR/COUNT: {}: {}".format(user, warnings[user]))
         if warnings[user] > 4:
             logging.warning("DIS/COUNT: '{}'".format(user))
-            handle_disable(session, (int(user), "id"))
+            log.info(handle_disable(session, (int(user), "id"), reason="count"))
     users = {}
     locks_re(locks)
 

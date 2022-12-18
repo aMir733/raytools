@@ -50,7 +50,7 @@ def handle_renew(database, user, expires):
     database.add(user)
     database.commit()
 
-def handle_disable(database, user, reason=None):
+def handle_disable(database, user, reason="disabled"):
     user = handle_get(database, user)
     user.disabled = reason
     database.add(user)
@@ -85,7 +85,7 @@ def handle_refresh(database, configuration, systemd, v2ray=False):
         if i + 1 == max_tries:
             log.error("Restarting systemd because xray crashed")
             systemd_restart(systemd)
-    sleep(0.5)
+    sleep(1)
     adi = api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, port=port)
     if adi.returncode == rmi.returncode == 0:
         log.info("Successfully refreshed")
