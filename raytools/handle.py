@@ -84,7 +84,7 @@ def handle_refresh(database, configuration, v2ray=False):
         if i + 1 == max_tries:
             log.error("API rmi failed. Let us hope this doesn't mean anything :)")
     adi = api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, port=port)
-    if adi.returncode == rdi.returncode == 0:
+    if adi.returncode == rmi.returncode == 0:
         log.info("Successfully refreshed")
         return True
     return
