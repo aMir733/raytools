@@ -9,6 +9,7 @@ import os
 import time
 from base64 import b64encode, b64decode
 import queue, threading
+from hashlib import sha1
 import logging
 
 log = logging.getLogger(__name__)
@@ -77,7 +78,7 @@ def log_parseline(line):
 
 def counter(users):
     for user, ips in users.items():
-        log.debug("processing {} with {}".format(user, ' '.join(ips)))
+        #log.debug("processing {} with {}".format(user, ' '.join(ips)))
         try:
             count, id = user.split("@")
         except ValueError:
@@ -348,6 +349,16 @@ def restart_remote(
             sc = service
         codes.append(subrun(['ssh', name, '--', 'systemctl', 'restart', '--', sc]).returncode)
     return codes
+
+def filesha1(filepath):
+    statinfo = os.stat(filepath)
+    if statinfo.st_size/1048576 < 200:
+      f_content = open(filepath, 'r').read()
+      return sha1(f_content.encode()).hexdigest()
+    else:
+      cmd = ['sha1sum', filepath]
+      out = subrun(cmd)
+      return out.stdout.decode().split()[0] 
 
 def make_uuid():
     return str(uuid4())
