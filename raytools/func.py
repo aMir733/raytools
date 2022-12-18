@@ -36,7 +36,7 @@ def log_parseline(line):
     if mode != "accepted":
         return
     ip = ip.split(":")
-    return (user.split("@")[1], ip[1] if len(ip) == 3 else ip[0])
+    return (user, ip[1] if len(ip) == 3 else ip[0])
 
 def counter(users):
     for user, ips in users.items():
@@ -44,7 +44,7 @@ def counter(users):
         count, id = user.split("@")
         if len(ips) <= int(count):
             continue
-        yield user
+        yield id
 
 def anytojson(inp):
     if isinstance(inp, bytes):
