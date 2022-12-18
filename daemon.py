@@ -41,8 +41,7 @@ def check_count(session, locks):
 
 def check_expire(session, locks):
     locks_aq(locks)
-    users = handle_expired(session, expired="now", disable=True)
-    logging.warning("DIS/EXPIRED: '{}'".format(','.join([i[0] for i in users])))
+    handle_expired(session, expired="now", disable=True)
     locks_re(locks)
 
 def check_traffic(session, locks):

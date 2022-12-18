@@ -60,6 +60,8 @@ def log_parseline(line):
         ip, mode, user = [line.strip().split(' ')[i] for i in [2, 3, 6]]
     except (KeyError, ValueError):
         return
+    if ip == "127.0.0.1":
+        return
     if mode != "accepted":
         return
     ip = ip.split(":")
@@ -354,6 +356,7 @@ def timedelta(date, days): # Increment/Decrement days in timestamp or datetime o
         date = timetostamp(date)
     if isinstance(date, int):
         return date + days * 86400
+    raise Exception("Invalid Type")
 
 def strtotime(date): # Converts standard ISO8601 string to datetime object
     if not isinstance(date, str):

@@ -4,4 +4,5 @@ ref/
 */__pycache__/
 __pycache__/
 *.db
+*.db_*
 single.py
