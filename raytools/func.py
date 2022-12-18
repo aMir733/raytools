@@ -73,7 +73,7 @@ def log_parseline(line):
         return
     if ip == "127.0.0.1":
         return
-    return (user, ip[1] if len(ip) == 3 else ip[0])
+    return (user, ip)
 
 def counter(users):
     for user, ips in users.items():
