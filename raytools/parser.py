@@ -107,6 +107,6 @@ class Daemon(Base):
             )
         #self.parser.add_argument('-q', '--quiet', action="store_true", help="quiet output")
         #self.parser.add_argument('-v', '--verbose', action="count", help="verbosity level")
-        self.parser.add_argument('-c', '--configuration', type=str, default=stdin, help=self.configuration_help)
+        self.parser.add_argument('-c', '--configuration', type=str, required=True, help=self.configuration_help)
         self.parser.add_argument('-o', '--output-log', default="/var/log/raytools.log", help="Where to output log files")
         self.parser.add_argument('logs', type=str, nargs='+', help='Log files to watch for user activity')
