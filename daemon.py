@@ -105,7 +105,7 @@ def main():
     scheduler.add_job(clear_warnings, 'interval', kwargs={'locks': (wlock,)}, minutes=5)
     scheduler.add_job(check_expire, 'interval', args=(session,), kwargs={'locks': (dlock,)}, minutes=2)
     scheduler.add_job(check_traffic, 'interval', args=(session,), kwargs={'locks': (dlock,)}, minutes=1)
-    scheduler.add_job(refresh, 'interval', args=(session, cfg_path, systemd, db_path), kwargs={'locks': (dlock,)}, seconds=20)
+    #scheduler.add_job(refresh, 'interval', args=(session, cfg_path, systemd, db_path), kwargs={'locks': (dlock,)}, seconds=20)
     scheduler.start()
     logging.info("Daemon started")
     

@@ -10,7 +10,7 @@ from time import sleep
 import logging
 
 log = logging.getLogger(__name__)
-CONNFIGURATION = "/usr/local/etc/xray/raytools.json"
+CONFIGURATION = "/usr/local/etc/xray/raytools.json"
 SYSTEMD = "xray@raytools"
 
 def handle_add(database, username, count, expires, uuid=None, telegram=None):
