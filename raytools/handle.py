@@ -58,12 +58,12 @@ def handle_disable(database, user, reason=None):
 def handle_enable(database, user):
     handle_disable(database, user, reason=None)
 
-def handle_refresh(database, infile, v2ray=False):
-    infile = readinfile(infile)
+def handle_refresh(database, configuration, v2ray=False):
+    configuration = readinfile(configuration)
     users = database.exec(select(User.id, User.count, User.uuid).where(User.disabled == None)).all()
     users_len = len(users)
     log.info("Found {} users".format(users_len))
-    cfg = parsecfg(infile)
+    cfg = parsecfg(configuration)
     inbounds, port = getinbounds(cfg, users)
     add_inbounds = {
         "inbounds": inbounds,

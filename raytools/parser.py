@@ -16,6 +16,7 @@ class Base:
     "Can also use + or - for delta time."
     "Example: '1401/2/14' OR '1401/4/22/16/30' OR +30 (30 days from now) OR -7 (7 days before) OR 'now' for the current time."
     days_help = "Subscription's duration in days"
+    configuration_help = "Source configuration file. You could also use stdin for this -> cat config.json | raytools.py"
 
     def parse(self):
         args = self.parser.parse_args()
@@ -77,7 +78,7 @@ class Raytools(Base):
         # enable arguments
         self.parser_enable.add_argument('user', type=str, help=self.username_help)
         # refresh arguments
-        self.parser_refresh.add_argument('-i', '--infile', type=str, default=stdin, help="Source configuration file. You could also use stdin for this -> cat config.json | raytools.py")
+        self.parser_refresh.add_argument('-c', '--configuration', type=str, default=stdin, help=self.configuration_help)
         #self.parser_refresh.add_argument('-2', '--v2ray', action="store_true", default=False, help="Use v2ray as the backed instead of xray")
         # addsrv arguments
         self.parser_addsrv.add_argument(
@@ -106,5 +107,6 @@ class Daemon(Base):
             )
         #self.parser.add_argument('-q', '--quiet', action="store_true", help="quiet output")
         #self.parser.add_argument('-v', '--verbose', action="count", help="verbosity level")
+        self.parser.add_argument('-c', '--configuration', type=str, default=stdin, help=self.configuration_help)
         self.parser.add_argument('-o', '--output-log', default="/var/log/raytools.log", help="Where to output log files")
         self.parser.add_argument('logs', type=str, nargs='+', help='Log files to watch for user activity')

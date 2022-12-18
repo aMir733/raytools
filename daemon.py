@@ -6,10 +6,11 @@ from raytools.log import *
 from raytools.handle import *
 from apscheduler.schedulers.background import BackgroundScheduler
 from threading import Lock
+from hashlib import md5
 import logging
 
 
-def log_tail(filename, locks):
+def log_tail(filename, locks=()):
     global users
     logging.info("Tailing: " + filename)
     for line in tail_F(filename):
@@ -24,7 +25,7 @@ def log_tail(filename, locks):
                 users[user] = {ip}
             locks_re(locks)
 
-def check_count(session, locks):
+def check_count(session, locks=()):
     global users, warnings
     locks_aq(locks)
     for user in counter(users):
@@ -39,22 +40,33 @@ def check_count(session, locks):
     users = {}
     locks_re(locks)
 
-def check_expire(session, locks):
+def check_expire(session, locks=()):
     locks_aq(locks)
     handle_expired(session, expired="now", disable=True)
     locks_re(locks)
 
-def check_traffic(session, locks):
+def check_traffic(session, locks=()):
     locks_aq(locks) 
     handle_traffic(session)
     locks_re(locks)
     
-def clear_warnings(locks):
+def refresh(session, cfg_path, db_path, locks=()):
+    global db_sha
+    locks_aq(locks)
+    with open(db_path, "rb") as f:
+        current = md5(f.read()).hexdigest()        
+    if current == db_sha:
+        log.info("Skipped refreshing")
+        return
+    handle_refresh(session, cfg_path)
+    locks_re(locks)
+    db_sha = current
+    
+def clear_warnings(locks=()):
     global warnings
     locks_aq(locks) 
     warnings = {}
     locks_re(locks)
-
 
 def init_args():
     parser = Daemon()
@@ -62,11 +74,14 @@ def init_args():
 
 def main():
     args = init_args()
-    db = Database(args.__dict__.pop('database'))
+    db_path = args.__dict__.pop('database')
+    cfg_path = args.configuration
+    db = Database(db_path)
     session = db.session()
-    global users, warnings
+    global users, warnings, db_sha
     users = {}
     warnings = {}
+    db_sha = ""
     
     # Locks
     dlock = Lock()
@@ -81,14 +96,17 @@ def main():
         filename=args.output_log,
         )
     
+    # Pre scheduler jobs
+    refresh(session, cfg_path, db_path, ())    
     # Scheduler
-    scheduler = BackgroundScheduler()
+    scheduler = BackgroundScheduler({'apscheduler.timezone': 'Asia/Tehran'})
     for filename in args.logs:
-        scheduler.add_job(log_tail, args=(filename, (ulock,)))
-    scheduler.add_job(check_count, 'interval', args=(session, (dlock, ulock, wlock)), seconds=30)
-    scheduler.add_job(clear_warnings, 'interval', args=((wlock,),), minutes=5)
-    scheduler.add_job(check_expire, 'interval', args=(session, (dlock,)), minutes=30)
-    scheduler.add_job(check_traffic, 'interval', args=(session, (dlock,)), minutes=5)
+        scheduler.add_job(log_tail, args=(filename,), kwargs={'locks': (ulock,)})
+    scheduler.add_job(check_count, 'interval', args=(session,), kwargs={'locks': (dlock, ulock, wlock)}, seconds=30)
+    scheduler.add_job(clear_warnings, 'interval', kwargs={'locks': (wlock,)}, minutes=5)
+    scheduler.add_job(check_expire, 'interval', args=(session,), kwargs={'locks': (dlock,)}, minutes=30)
+    scheduler.add_job(check_traffic, 'interval', args=(session,), kwargs={'locks': (dlock,)}, minutes=5)
+    scheduler.add_job(refresh, 'interval', args=(session, cfg_path, db_path), kwargs={'locks': (dlock,)}, seconds=25)
     scheduler.start()
     logging.info("Daemon started")
     
