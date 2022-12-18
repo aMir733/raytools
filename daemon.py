@@ -15,7 +15,7 @@ def log_tail(filename, locks=()):
     logging.info("Tailing: " + filename)
     for line in tail_F(filename):
         if not line:
-            time.sleep(0.1)
+            #time.sleep(0.1)
             continue
         try:
             user, ip = log_parseline(line)
@@ -63,9 +63,9 @@ def refresh(session, cfg_path, db_path, locks=()):
         current = md5(f.read()).hexdigest()        
     if current == db_sha:
         log.info("Skipped refreshing")
-        return
-    if handle_refresh(session, cfg_path):
-        db_sha = current
+    else:
+        if handle_refresh(session, cfg_path):
+            db_sha = current
     locks_re(locks)
     
 def clear_warnings(locks=()):
