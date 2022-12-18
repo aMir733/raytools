@@ -17,7 +17,10 @@ def log_tail(filename, locks=()):
         if not line:
             time.sleep(0.1)
             continue
-        user, ip = log_parseline(line)
+        try:
+            user, ip = log_parseline(line)
+        except TypeError:
+            continue
         if user and ip:
             locks_aq(locks)
             try:

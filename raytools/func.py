@@ -61,9 +61,9 @@ def log_parseline(line):
     except (KeyError, ValueError):
         return
     if ip == "127.0.0.1":
-        return
+        return (None, None)
     if mode != "accepted":
-        return
+        return (None, None)
     ip = ip.split(":")
     return (user, ip[1] if len(ip) == 3 else ip[0])
 
