@@ -58,9 +58,9 @@ def refresh(session, cfg_path, db_path, locks=()):
     if current == db_sha:
         log.info("Skipped refreshing")
         return
-    handle_refresh(session, cfg_path)
+    if handle_refresh(session, cfg_path):
+        db_sha = current
     locks_re(locks)
-    db_sha = current
     
 def clear_warnings(locks=()):
     global warnings
