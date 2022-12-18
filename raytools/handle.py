@@ -73,24 +73,24 @@ def handle_refresh(database, configuration, systemd, v2ray=False):
         "inbounds": [{"tag": inb["tag"]} for inb in inbounds]
     }
     backend = "v2ray" if v2ray else "xray"
-    max_tries = 2
-    log.info("Initiated API rmi with max retry of " + str(max_tries))
-    for i in range(max_tries):
-        rmi = api("rmi", infile=jsondumps(rm_inbounds).encode(), backend=backend, timeout=30, port=port)
-        if "failed to dial" in rmi.stderr.decode():
-            raise Exception("API failed because we could not reach it")
-        if rmi.returncode == 0 or "not enough information for making a decision" in rmi.stderr.decode():
-            break
-        log.warning("Retried because of an API error: " + rmi.stderr.decode())
-        if i + 1 == max_tries:
-            log.error("Restarting systemd because xray crashed")
-            systemd_restart(systemd)
-    sleep(1)
+    #max_tries = 2
+    #log.info("Initiated API rmi with max retry of " + str(max_tries))
+    #for i in range(max_tries):
+    #    rmi = api("rmi", infile=jsondumps(rm_inbounds).encode(), backend=backend, timeout=30, port=port)
+    #    if "failed to dial" in rmi.stderr.decode():
+    #        raise Exception("API failed because we could not reach it")
+    #    if rmi.returncode == 0 or "not enough information for making a decision" in rmi.stderr.decode():
+    #        break
+    #    log.warning("Retried because of an API error: " + rmi.stderr.decode())
+    #    if i + 1 == max_tries:
+    #        log.error("Restarting systemd because xray crashed")
+    #        systemd_restart(systemd)
+    #sleep(1)
     adi = api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, timeout=30, port=port)
-    if adi.returncode == rmi.returncode == 0:
+    if adi.returncode == 0:
         log.info("Successfully refreshed")
         return True
-    return
+    log.error("adi failed with error: " + adi.stderr.decode())
 
 def handle_addsrv(database, link, inbound_index, name, address):
     if islink(link):
