@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from raytools.func import *
 from raytools.db import Database
 from raytools.models import *
