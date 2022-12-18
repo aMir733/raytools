@@ -25,6 +25,7 @@ def check_count(session, locks):
     global users, warnings
     locks_aq(locks)
     for user in counter(users):
+        log.info("WAR/COUNT: '{}'".format(user))        
         try:
             warnings[user] = warnings[user] + 1
         except KeyError:
