@@ -32,8 +32,6 @@ def log_tail(filename, locks=()):
 def check_count(session, locks=()):
     global users, warnings
     locks_aq(locks)
-    if not users:
-        return
     for user in counter(users):
         log.info("WAR/COUNT: '{}'".format(user))        
         try:
