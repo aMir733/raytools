@@ -66,6 +66,7 @@ def handle_refresh(database, configuration, systemd, v2ray=False):
     log.info("Found {} users".format(users_len))
     cfg = parsecfg(configuration)
     inbounds, port = getinbounds(cfg, users)
+    log.info("API Port: %s" % port)
     add_inbounds = {
         "inbounds": inbounds,
     }

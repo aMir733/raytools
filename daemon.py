@@ -56,15 +56,8 @@ def check_traffic(session, locks=()):
     locks_re(locks)
     
 def refresh(session, cfg_path, systemd, db_path, locks=()):
-    global db_sha
     locks_aq(locks)
-    with open(db_path, "rb") as f:
-        current = md5(f.read()).hexdigest()        
-    if current == db_sha:
-        log.info("Skipped refreshing")
-    else:
-        if handle_refresh(session, cfg_path, systemd):
-            db_sha = current
+    handle_refresh(session, cfg_path, systemd)
     locks_re(locks)
     
 def clear_warnings(locks=()):
@@ -85,10 +78,9 @@ def main():
     systemd = args.systemd
     db = Database(db_path)
     session = db.session()
-    global users, warnings, db_sha
+    global users, warnings
     users = {}
     warnings = {}
-    db_sha = ""
     
     # Locks
     dlock = Lock()
@@ -113,7 +105,7 @@ def main():
     scheduler.add_job(clear_warnings, 'interval', kwargs={'locks': (wlock,)}, minutes=5)
     scheduler.add_job(check_expire, 'interval', args=(session,), kwargs={'locks': (dlock,)}, minutes=2)
     scheduler.add_job(check_traffic, 'interval', args=(session,), kwargs={'locks': (dlock,)}, minutes=1)
-    scheduler.add_job(refresh, 'interval', args=(session, cfg_path, systemd, db_path), kwargs={'locks': (dlock,)}, seconds=25)
+    #scheduler.add_job(refresh, 'interval', args=(session, cfg_path, systemd, db_path), kwargs={'locks': (dlock,)}, seconds=25)
     scheduler.start()
     logging.info("Daemon started")
     
