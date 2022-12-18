@@ -70,6 +70,7 @@ def clear_warnings(locks=()):
     global warnings
     locks_aq(locks) 
     warnings = {}
+    log.info("Warnings cleared")
     locks_re(locks)
 
 def init_args():
