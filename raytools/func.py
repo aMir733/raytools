@@ -285,7 +285,6 @@ def parse_traffic(js):
             users[user] = int(entry['value'])
     return users
 
-
 def readinfile(infile):
     if not isopenedfile(infile):
         infile = open(infile, "r")

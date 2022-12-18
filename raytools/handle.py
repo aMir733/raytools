@@ -117,7 +117,11 @@ def handle_traffic(database):
     out = api("statsquery").stdout.decode()
     traffics = parse_traffic(out)
     for id, traffic in traffics.items():
-        user = database.exec(select(User).where(User.id == int(id))).one()
+        try:
+            user = database.exec(select(User).where(User.id == int(id))).one()
+        except NoResultFound:
+            log.error("Could not find user {} in the database. Maybe a refresh is required")
+            continue
         if not isinstance(user.traffic, int):
             user.traffic = 0
         user.traffic = user.traffic + traffic
