@@ -302,7 +302,8 @@ def readinfile(infile):
     return infile
 
 def systemd_restart(systemd):
-    return subrun(['systemctl', 'restart', systemd])
+    subrun(['systemctl', 'kill', systemd])
+    subrun(['systemctl', 'start', systemd])
 
 def issystemd():
     if subrun(['command', '-v', 'systemctl']).returncode != 0:
