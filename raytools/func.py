@@ -64,17 +64,24 @@ def log_parseline(line):
         ip, mode, user = [line.strip().split(' ')[i] for i in [2, 3, 6]]
     except (KeyError, ValueError):
         return
-    if ip == "127.0.0.1":
-        return (None, None)
     if mode != "accepted":
-        return (None, None)
+        return
     ip = ip.split(":")
+    try:
+        ip = ip[1] if len(ip) == 3 else ip[0]
+    except IndexError:
+        return
+    if ip == "127.0.0.1":
+        return
     return (user, ip[1] if len(ip) == 3 else ip[0])
 
 def counter(users):
     for user, ips in users.items():
         log.debug("processing {} with {}".format(user, ' '.join(ips)))
-        count, id = user.split("@")
+        try:
+            count, id = user.split("@")
+        except ValueError:
+            continue
         if len(ips) <= int(count):
             continue
         yield id
