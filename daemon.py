@@ -13,13 +13,13 @@ def log_tail(filename, locks):
     global users
     logging.info("Tailing: " + filename)
     for line in tail(open(filename)):
-        user = log_parseline(line)
-        if user:
+        user, ip = log_parseline(line)
+        if user and ip:
             locks_aq(locks)
             try:
-                users[user[0]].add(user[1])
+                users[user].add(ip)
             except KeyError:
-                users[user[0]] = {user[1]}
+                users[user] = {ip}
             locks_re(locks)
 
 def check_count(session, locks):

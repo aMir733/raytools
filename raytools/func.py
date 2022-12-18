@@ -29,13 +29,14 @@ def tail(f): # http://www.dabeaz.com/generators/
         yield line
        
 def log_parseline(line):
-    line = line.strip().split(' ')
     try:
-        if line[3] != "accepted":
-            return
-        return (line[6], line[2])
-    except IndexError:
+        ip, mode, user = [line.strip().split(' ')[i] for i in [2, 3, 6]]
+    except (KeyError, ValueError):
         return
+    if mode != "accepted":
+        return
+    ip = ip.split(":")
+    return (user.split("@")[1], ip[1] if len(ip) == 3 else ip[0])
 
 def counter(users):
     for user, ips in users.items():
