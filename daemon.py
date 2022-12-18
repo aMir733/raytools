@@ -38,7 +38,7 @@ def check_count(session, locks=()):
         except KeyError:
             warnings[user] = 1            
         log.info("WAR/COUNT: {}: {}".format(user, warnings[user]))
-        if warnings[user] > 5:
+        if warnings[user] > 4:
             logging.warning("DIS/COUNT: '{}'".format(user))
             handle_disable(session, (int(user), "id"))
     users = {}
