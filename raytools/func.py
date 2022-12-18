@@ -354,7 +354,7 @@ def make_uuid():
 def isuuid(uuid):
     try:
         UUID(uuid)
-    except ValueError:
+    except:
         return False
     return True
 
