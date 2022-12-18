@@ -108,7 +108,7 @@ def main():
     scheduler = BackgroundScheduler({'apscheduler.timezone': 'Asia/Tehran'})
     for filename in args.logs:
         scheduler.add_job(log_tail, args=(filename,), kwargs={'locks': (ulock,)})
-    scheduler.add_job(check_count, 'interval', args=(session,), kwargs={'locks': (dlock, ulock, wlock)}, seconds=30)
+    scheduler.add_job(check_count, 'interval', args=(session,), kwargs={'locks': (ulock, dlock, wlock)}, seconds=30)
     scheduler.add_job(clear_warnings, 'interval', kwargs={'locks': (wlock,)}, minutes=5)
     scheduler.add_job(check_expire, 'interval', args=(session,), kwargs={'locks': (dlock,)}, minutes=30)
     scheduler.add_job(check_traffic, 'interval', args=(session,), kwargs={'locks': (dlock,)}, minutes=5)
