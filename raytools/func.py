@@ -42,7 +42,7 @@ def counter(users):
     for user, ips in users.items():
         log.debug("processing {} with {}".format(user, ' '.join(ips)))
         count, id = user.split("@")
-        if len(ips) <= count:
+        if len(ips) <= int(count):
             continue
         final.append(user)
     return final
