@@ -72,10 +72,15 @@ def handle_refresh(database, infile, v2ray=False):
         "inbounds": [{"tag": inb["tag"]} for inb in inbounds]
     }
     backend = "v2ray" if v2ray else "xray"
-    for i in range(10):
+    max_tries = 10
+    log.info("Initiated api rmi with max retry of " + str(max_tries))
+    for i in range(max_tries):
         rmi = api("rmi", infile=jsondumps(rm_inbounds).encode(), backend=backend, port=port)
+        if "failed to dial" in rmi.stderr.decode():
+            raise Exception("API failed because we could not reach it")
         if rmi.returncode == 0 or "not enough information for making a decision" in rmi.stderr.decode():
             break
+        log.error("Retrying because of an API error: " + rmi.stderr.decode())
     adi = api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, port=port)
 
 def handle_addsrv(database, link, inbound_index, name, address):
