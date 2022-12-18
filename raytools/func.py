@@ -14,10 +14,10 @@ import logging
 log = logging.getLogger(__name__)
 
 def locks_aq(locks):
-    return (lock.acquire() for lock in locks)
+    return [lock.acquire() for lock in locks]
 
 def locks_re(locks):
-    return (lock.release() for lock in locks)
+    return [lock.release() for lock in locks]
 
 def tail(f): # http://www.dabeaz.com/generators/
     f.seek(0, 2)

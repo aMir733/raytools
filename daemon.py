@@ -97,7 +97,7 @@ def main():
         )
     
     # Pre scheduler jobs
-    refresh(session, cfg_path, db_path, ())    
+    refresh(session, cfg_path, db_path, locks=())    
     # Scheduler
     scheduler = BackgroundScheduler({'apscheduler.timezone': 'Asia/Tehran'})
     for filename in args.logs:
