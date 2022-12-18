@@ -74,7 +74,7 @@ def handle_refresh(database, infile, v2ray=False):
     backend = "v2ray" if v2ray else "xray"
     for i in range(10):
         rmi = api("rmi", infile=jsondumps(rm_inbounds).encode(), backend=backend, port=port)
-        if rmi.returncode == 0 or "not enough information for making a decision" in rmi.stderr:
+        if rmi.returncode == 0 or "not enough information for making a decision" in rmi.stderr.decode():
             break
     adi = api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, port=port)
 
