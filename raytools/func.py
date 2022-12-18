@@ -41,7 +41,7 @@ def tail_F(some_file): # https://stackoverflow.com/a/12523119
                     if '\n' not in latest_data:
                         latest_data += infile.read()
                         if '\n' not in latest_data:
-                            yield ''
+                            yield None
                             if not os.path.isfile(some_file):
                                 break
                             continue
@@ -53,7 +53,7 @@ def tail_F(some_file): # https://stackoverflow.com/a/12523119
                     for line in latest_lines[:-1]:
                         yield line + '\n'
         except IOError:
-            yield ''
+            yield None
 
 def log_parseline(line):
     try:
