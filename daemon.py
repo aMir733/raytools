@@ -6,9 +6,7 @@ from raytools.log import *
 from raytools.handle import *
 from apscheduler.schedulers.background import BackgroundScheduler
 from threading import Lock
-from sh import tail
 import logging
-
 
 
 def log_tail(filename, locks):
@@ -82,7 +80,6 @@ def main():
         filename=args.output_log,
         )
     
-    logging.warning("test")
     # Scheduler
     scheduler = BackgroundScheduler()
     for filename in args.logs:
