@@ -15,12 +15,12 @@ log = logging.getLogger(__name__)
 
 def locks_aq(locks):
     for index, lock in enumerate(locks):
-        log.debug("Acquiring lock %s" % index)
+        #log.debug("Acquiring lock %s" % index)
         lock.acquire()
 
 def locks_re(locks):
     for index, lock in enumerate(locks):
-        log.debug("Releasing lock %s" % index)
+        #log.debug("Releasing lock %s" % index)
         lock.release()
 
 def tail(f): # http://www.dabeaz.com/generators/
