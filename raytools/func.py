@@ -46,6 +46,8 @@ def counter(users):
         yield user
 
 def anytojson(inp):
+    if isinstance(inp, bytes):
+        inp = inp.decode()
     if isinstance(inp, str):
         try:
             return jsonloads(inp)
