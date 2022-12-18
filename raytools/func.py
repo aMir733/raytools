@@ -246,9 +246,9 @@ def parse_traffic(js):
         if name[0] != "user" or name[2] != "traffic" or name[3] != "downlink" and name[3] != "uplink":
             continue
         try:
-            users[name[1]] = users[name[1]] + int(entry['value'])
+            users[name[1]] = int(users[name[1]]) + int(entry['value'])
         except KeyError:
-            users[name[1]] = entry['value']
+            users[name[1]] = int(entry['value'])
     return users
 
 
