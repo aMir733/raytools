@@ -6,6 +6,7 @@ from json import loads as jsonloads, dumps as jsondumps, load as jsonload, dump 
 from re import compile as recompile
 from base64 import b64encode
 from sys import stdout
+from time import sleep
 import logging
 
 log = logging.getLogger(__name__)
@@ -84,6 +85,7 @@ def handle_refresh(database, configuration, systemd, v2ray=False):
         if i + 1 == max_tries:
             log.error("Restarting systemd because xray crashed")
             systemd_restart(systemd)
+    sleep(0.5)
     adi = api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, port=port)
     if adi.returncode == rmi.returncode == 0:
         log.info("Successfully refreshed")
