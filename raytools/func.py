@@ -258,7 +258,7 @@ def cfgtolink( # Calls inbtolink for an inbound in cfg
     raise Exception("No inbound found in configuration file")
 
 def api(action, *args, infile=None, backend="xray", port=10085):
-    command = [backend, 'api', action, '-s', f'127.0.0.1:{int(port)}', *args]
+    command = [backend, 'api', action, '-s', f'127.0.0.1:{int(port)}', '-t', '2', *args]
     out = subrun(
         command,
         input=infile,
