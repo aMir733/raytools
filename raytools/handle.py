@@ -81,7 +81,8 @@ def handle_refresh(database, configuration, systemd, v2ray=False):
             raise Exception("API failed because we could not reach it")
         if "not enough information for making a decision" in rmi.stderr.decode():
             break
-        log.warning("Retried because of an API error: " + rmi.stderr.decode())
+        if rmi.returncode != 0:
+            log.warning("Retried because of an API error: " + rmi.stderr.decode())
         if i + 1 == max_tries:
             log.error("Restarting systemd because xray crashed")
             systemd_restart(systemd)
