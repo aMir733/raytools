@@ -11,7 +11,6 @@ def init_args():
     parser.parser_get.set_defaults(func=handle_get)
     parser.parser_renew.set_defaults(func=handle_renew)
     parser.parser_revoke.set_defaults(func=handle_revoke)
-    parser.parser_uuid.set_defaults(func=handle_uuid)
     parser.parser_disable.set_defaults(func=handle_disable)
     parser.parser_enable.set_defaults(func=handle_enable)
     parser.parser_refresh.set_defaults(func=handle_refresh)
