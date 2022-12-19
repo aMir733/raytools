@@ -28,6 +28,7 @@ def handle_add(database, username, count, expires, uuid=None, telegram=None):
     refresh_required()
     if telegram:
         handle_login(database, user, telegram)
+    return user
 
 def handle_get(database, user):
     if isinstance(user, User):
@@ -47,6 +48,7 @@ def handle_uuid(database, user, uuid=None):
     database.add(user)
     database.commit()
     refresh_required()
+    return user
     
 def handle_renew(database, user, expires):
     user = handle_get(database, user)
@@ -56,6 +58,18 @@ def handle_renew(database, user, expires):
     database.add(user)
     database.commit()
     refresh_required()
+    return user
+
+def handle_revoke(database, user, uuid=None):
+    uuid = uuid if uuid else make_uuid()
+    if not isuuid(uuid):
+        raise ValueError(f"'{uuid}' is not a valid UUID")
+    user = handle_get(database, user)
+    user.uuid = uuid
+    database.add(user)
+    database.commit()
+    refresh_required()
+    return user
 
 def handle_disable(database, user, reason="disabled"):
     user = handle_get(database, user)
@@ -63,9 +77,17 @@ def handle_disable(database, user, reason="disabled"):
     database.add(user)
     database.commit()
     refresh_required()
+    return user
 
-def handle_enable(database, user):
-    handle_disable(database, user, reason=None)
+def handle_enable(database, user, reset_traffic=False):
+    user = handle_get(database, user)
+    user.disabled = None
+    if reset_traffic:
+        user.traffic = 0
+    database.add(user)
+    database.commit()
+    refresh_required()
+    return user
 
 def handle_refresh(database, configuration=CONFIGURATION, systemd=SYSTEMD, v2ray=False):
     configuration = readinfile(configuration)
@@ -121,14 +143,14 @@ def handle_expired(database, expired, disable=False):
     log.info("Showing users that expire before " + str(stamptotime(date)))
     users = database.exec(select(User).where(User.expires < date, User.disabled == None)).all()
     log.info("Count: %s" % len(users))
-    if users, disable:
+    if users and disable:
         log.warning("Disabling {} users".format(len(users)))
         for user in users:
             user.disabled = "expired"
             database.add(user)
         database.commit()
         refresh_required()
-        return
+        return users
 
 def handle_traffic(database):
     out = api("statsquery").stdout.decode()

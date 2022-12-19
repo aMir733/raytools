@@ -107,6 +107,7 @@ class Raytools(Base):
             )
         # enable arguments
         self.parser_enable.add_argument('user', type=str, help=self.username_help)
+        self.parser_uuid.add_argument('-r', '--reset', action="store_true", help='Also resets user\'s traffic')
         # refresh arguments
         self.parser_refresh.add_argument('-c', '--configuration', type=str, default=stdin, help=self.configuration_help)
         self.parser_refresh.add_argument('-s', '--systemd', type=str, required=True, help="Xray\'s systemd service name (Just in case)")
