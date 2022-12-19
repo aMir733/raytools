@@ -143,7 +143,6 @@ def handle_traffic(database):
         user.traffic = user.traffic + traffic
         database.add(user)
     database.commit()
-    handle_refresh(database)
     api("statsquery", "-reset=true") # Reset the traffic
 
 def handle_login(database, user, telegram):
