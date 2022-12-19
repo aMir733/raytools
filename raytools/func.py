@@ -362,7 +362,10 @@ def refresh_required(required=True):
         with open(path, "w") as f:
             pass
         return
-    os.remove(path)
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
 
 def is_refresh_required():
     return os.path.exists(get_xdgruntime() + "/raytools_refresh")
