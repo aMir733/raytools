@@ -84,7 +84,7 @@ class Raytools(Base):
             help=self.db_help
             )
         self.parser.add_argument('-q', '--quiet', action="store_true", help="quiet output")
-        self.parser.add_argument('-v', '--verbose', action="count", help="verbosity level")
+        self.parser.add_argument('-v', '--verbose', action="count", default=None, help="verbosity level")
         # add arguments
         self.parser_add.add_argument('username', type=str, help=self.username_new_help)
         self.parser_add.add_argument('-c', '--count', type=int, default=1, help='Number of devices allowed for this user')
@@ -138,7 +138,7 @@ class Daemon(Base):
             help=self.db_help
             )
         #self.parser.add_argument('-q', '--quiet', action="store_true", help="quiet output")
-        #self.parser.add_argument('-v', '--verbose', action="count", help="verbosity level")
+        #self.parser.add_argument('-v', '--verbose', action="count", default=None, help="verbosity level")
         self.parser.add_argument('-c', '--configuration', type=str, required=True, help=self.configuration_help)
         self.parser.add_argument('-s', '--systemd', type=str, required=True, help="Xray\'s systemd service name (Just in case)")
         self.parser.add_argument('-l', '--output-log', default="./raytools-daemon.log", help="Where to write logs")
