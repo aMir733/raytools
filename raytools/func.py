@@ -351,7 +351,7 @@ def restart_remote(
     return codes
 
 def get_env():
-    return dict(os.environ())
+    return os.environ
 
 def get_xdgruntime(default="."):
     return get_env().get('XDG_RUNTIME_DIR', default) 
