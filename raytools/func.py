@@ -85,7 +85,7 @@ def counter(users):
             continue
         if len(ips) <= int(count):
             continue
-        yield id
+        yield id, ips
 
 def anytojson(inp):
     if isinstance(inp, bytes):

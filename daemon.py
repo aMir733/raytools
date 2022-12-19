@@ -33,12 +33,12 @@ def log_tail(filename, locks=()):
 def check_count(database, locks=()):
     global users, warnings
     locks_aq(locks)
-    for user in counter(users):
+    for user, ips in counter(users):
         try:
             warnings[user] = warnings[user] + 1
         except KeyError:
-            warnings[user] = 1            
-        log.info("WAR/COUNT: {}: {}".format(user, warnings[user]))
+            warnings[user] = 1
+        log.info("WAR/COUNT: {}: {}: {}".format(user, warnings[user], ' '.join(ips)))
         if warnings[user] > 4:
             logging.warning("DIS/COUNT: '{}'".format(user))
             log.info(handle_disable(database, (int(user), "id"), reason="count"))
@@ -106,8 +106,8 @@ def main():
     scheduler = BackgroundScheduler({'apscheduler.timezone': 'Asia/Tehran'})
     for filename in args.logs:
         scheduler.add_job(log_tail, args=(filename,), kwargs={'locks': (ulock,)})
-    scheduler.add_job(check_count, 'interval', args=(database,), kwargs={'locks': (ulock, dlock, wlock)}, seconds=30)
-    scheduler.add_job(clear_warnings, 'interval', kwargs={'locks': (wlock,)}, minutes=5)
+    scheduler.add_job(check_count, 'interval', args=(database,), kwargs={'locks': (ulock, dlock, wlock)}, seconds=15)
+    scheduler.add_job(clear_warnings, 'interval', kwargs={'locks': (wlock,)}, seconds=90)
     scheduler.add_job(check_expire, 'interval', args=(database,), kwargs={'locks': (dlock,)}, minutes=2)
     scheduler.add_job(check_traffic, 'interval', args=(database,), kwargs={'locks': (dlock,)}, minutes=1)
     scheduler.add_job(refresh, 'interval', args=(database, cfg_path, systemd, db_path), kwargs={'locks': (dlock,)}, seconds=30)
