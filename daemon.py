@@ -56,16 +56,16 @@ def check_traffic(database, locks=()):
     locks_re(locks)
     
 def refresh(database, cfg_path, systemd, db_path, locks=()):
-    global sha1
-    n_sha1 = filesha1(db_path)
-    if sha1 == n_sha1:
-        log.info("Skipped refreshing")
-        return
+    #global sha1
+    #n_sha1 = filesha1(db_path)
+    #if sha1 == n_sha1:
+    #    log.info("Skipped refreshing")
+    #    return
     locks_aq(locks)
     log.info("Refreshing...")
     handle_refresh(database, cfg_path, systemd)
     locks_re(locks)
-    sha1 = n_sha1
+    #sha1 = n_sha1
     
 def clear_warnings(locks=()):
     global warnings
