@@ -350,8 +350,11 @@ def restart_remote(
         codes.append(subrun(['ssh', name, '--', 'systemctl', 'restart', '--', sc]).returncode)
     return codes
 
+def get_env():
+    return dict(os.environ())
+
 def get_xdgruntime(default="."):
-    return os.environ().get('XDG_RUNTIME_DIR', default) 
+    return get_env().get('XDG_RUNTIME_DIR', default) 
 
 def refresh_required(required):
     path = get_xdgruntime() + "/raytools_refresh"
