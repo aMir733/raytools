@@ -1,6 +1,7 @@
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from os import environ as env
+from os import environ as env, path
 from sys import stdin
+from yaml import load, FullLoader
 import logging
 
 log = logging.getLogger(__name__)
@@ -17,16 +18,44 @@ class Base:
     "Example: '1401/2/14' OR '1401/4/22/16/30' OR +30 (30 days from now) OR -7 (7 days before) OR 'now' for the current time."
     days_help = "Subscription's duration in days"
     configuration_help = "Source configuration file. You could also use stdin for this -> cat config.json | raytools.py"
+    yaml_help = "Path to your yaml configuration file"
+    
+    def parse_yaml(self, filepath):
+        with open(filepath) as f:
+            return load(f, Loader=FullLoader)
 
     def parse(self):
         args = self.parser.parse_args()
+        ycfg = {}
+        if args.yaml:
+            try:
+                ycfg = self.parse_yaml(args.yaml)
+            except FileNotFoundError:
+                self.parser.error(f"Yaml file {args.yaml} was not found")
+        else:
+            yfile = "raytools.yaml"
+            paths = [
+                f"./{yfile}",
+                env.get('XDG_CONFIG_HOME', env.get('HOME', '~') + "/.config") + f"/{yfile}",
+                f"/usr/local/etc/{yfile}",
+                f"/etc/{yfile}",
+                ]
+            for filepath in paths:
+                try:
+                    ycfg = self.parse_yaml(filepath)
+                except FileNotFoundError:
+                    continue
         if not args.database:
-            self.parser.error("Database not set. -d --database or RT_DATABASE=")
+            if not "database" in ycfg:
+                self.parser.error("Database not set. -d --database or RT_DATABASE=")
+            args.database = ycfg.pop("database")
         if "verbose" in args.__dict__:
             if args.quiet:
                 self.parser.error("Cannot be quiet (-q) and loud (-v) at the same time")
             if args.verbose > 4:
                 args.verbose = 4
+        args.database = path.expanduser(args.database)
+        args.yaml = ycfg
         return args
 
 class Raytools(Base):
@@ -49,6 +78,7 @@ class Raytools(Base):
         Raytools.parser_login = self.subparser.add_parser('login', help='Login a user to telegram')
 
         # global arguments
+        self.parser.add_argument('-y', '--yaml', type=str, default=None, help=self.yaml_help)
         self.parser.add_argument(
             '-d', '--database', type=str, default=env.get("RT_DATABASE"),
             help=self.db_help
@@ -102,6 +132,7 @@ class Daemon(Base):
             description='Daemon to check for user activity and expiration date and more...',
             formatter_class=ArgumentDefaultsHelpFormatter
             )
+        self.parser.add_argument('-y', '--yaml', type=str, default=None, help=self.yaml_help)
         self.parser.add_argument(
             '-d', '--database', type=str, default=env.get("RT_DATABASE"),
             help=self.db_help
@@ -112,3 +143,15 @@ class Daemon(Base):
         self.parser.add_argument('-s', '--systemd', type=str, required=True, help="Xray\'s systemd service name (Just in case)")
         self.parser.add_argument('-o', '--output-log', default="/var/log/raytools.log", help="Where to output log files")
         self.parser.add_argument('logs', type=str, nargs='+', help='Log files to watch for user activity')
+
+class Robot(Base):
+    def __init__(self):
+        Robot.parser = ArgumentParser(
+            description='Telegram robot for your users and yourself',
+            formatter_class=ArgumentDefaultsHelpFormatter,
+            )
+        self.parser.add_argument('-y', '--yaml', type=str, default=None, help=self.yaml_help)
+        self.parser.add_argument(
+            '-d', '--database', type=str, default=env.get("RT_DATABASE"),
+            help=self.db_help
+            )

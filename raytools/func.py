@@ -353,8 +353,8 @@ def restart_remote(
 def filesha1(filepath):
     statinfo = os.stat(filepath)
     if statinfo.st_size/1048576 < 200:
-      f_content = open(filepath, 'r').read()
-      return sha1(f_content.encode()).hexdigest()
+      f_content = open(filepath, 'rb').read()
+      return sha1(f_content).hexdigest()
     else:
       cmd = ['sha1sum', filepath]
       out = subrun(cmd)

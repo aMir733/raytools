@@ -27,6 +27,7 @@ def main():
         log.warning("No configuration was specified in the arguments so, reading from stdin...")
     db = Database(args.__dict__.pop('database'))
     session = db.session()
+    args.__dict__.pop('yaml') # don't need it yet
     r = args.__dict__.pop('func')(**vars(args), database=session)
     if r:
         print(r)

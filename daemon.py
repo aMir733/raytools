@@ -30,7 +30,7 @@ def log_tail(filename, locks=()):
                 users[user] = {ip}
             locks_re(locks)
 
-def check_count(session, locks=()):
+def check_count(database, locks=()):
     global users, warnings
     locks_aq(locks)
     for user in counter(users):
@@ -41,29 +41,29 @@ def check_count(session, locks=()):
         log.info("WAR/COUNT: {}: {}".format(user, warnings[user]))
         if warnings[user] > 4:
             logging.warning("DIS/COUNT: '{}'".format(user))
-            log.info(handle_disable(session, (int(user), "id"), reason="count"))
+            log.info(handle_disable(database, (int(user), "id"), reason="count"))
     users = {}
     locks_re(locks)
 
-def check_expire(session, locks=()):
+def check_expire(database, locks=()):
     locks_aq(locks)
-    handle_expired(session, expired="now", disable=True)
+    handle_expired(database, expired="now", disable=True)
     locks_re(locks)
 
-def check_traffic(session, locks=()):
+def check_traffic(database, locks=()):
     locks_aq(locks) 
-    handle_traffic(session)
+    handle_traffic(database)
     locks_re(locks)
     
-def refresh(session, cfg_path, systemd, db_path, locks=()):
+def refresh(database, cfg_path, systemd, db_path, locks=()):
     global sha1
     n_sha1 = filesha1(db_path)
     if sha1 == n_sha1:
         log.info("Skipped refreshing")
         return
     locks_aq(locks)
-    log.infl("Refreshing...")
-    handle_refresh(session, cfg_path, systemd)
+    log.info("Refreshing...")
+    handle_refresh(database, cfg_path, systemd)
     locks_re(locks)
     sha1 = n_sha1
     
@@ -79,20 +79,8 @@ def init_args():
     return parser.parse()
 
 def main():
+    # Arguments
     args = init_args()
-    db_path = args.__dict__.pop('database')
-    cfg_path = args.configuration
-    systemd = args.systemd
-    db = Database(db_path)
-    session = db.session()
-    global users, warnings, sha1
-    users = {}
-    warnings = {}
-    
-    # Locks
-    dlock = Lock()
-    ulock = Lock()
-    wlock = Lock()
     
     # Logging
     configure_logging(
@@ -101,18 +89,33 @@ def main():
         format="%(asctime)s (%(name)s): %(message)s",
         filename=args.output_log,
         )
+
+    db_path = args.__dict__.pop('database')
+    cfg_path = args.configuration
+    systemd = args.systemd
+    log.info("Starting database located at: " + db_path)
+    db = Database(db_path)
+    database = db.session()
+    global users, warnings, sha1
+    users = {}
+    warnings = {}
     
+    # Locks
+    dlock = Lock()
+    ulock = Lock()
+    wlock = Lock()
+        
     # Pre scheduler jobs
-    refresh(session, cfg_path, systemd, db_path, locks=())    
+    refresh(database, cfg_path, systemd, db_path, locks=())    
     # Scheduler
     scheduler = BackgroundScheduler({'apscheduler.timezone': 'Asia/Tehran'})
     for filename in args.logs:
         scheduler.add_job(log_tail, args=(filename,), kwargs={'locks': (ulock,)})
-    scheduler.add_job(check_count, 'interval', args=(session,), kwargs={'locks': (ulock, dlock, wlock)}, seconds=30)
+    scheduler.add_job(check_count, 'interval', args=(database,), kwargs={'locks': (ulock, dlock, wlock)}, seconds=30)
     scheduler.add_job(clear_warnings, 'interval', kwargs={'locks': (wlock,)}, minutes=5)
-    scheduler.add_job(check_expire, 'interval', args=(session,), kwargs={'locks': (dlock,)}, minutes=2)
-    scheduler.add_job(check_traffic, 'interval', args=(session,), kwargs={'locks': (dlock,)}, minutes=1)
-    scheduler.add_job(refresh, 'interval', args=(session, cfg_path, systemd, db_path), kwargs={'locks': (dlock,)}, minutes=1)
+    scheduler.add_job(check_expire, 'interval', args=(database,), kwargs={'locks': (dlock,)}, minutes=2)
+    scheduler.add_job(check_traffic, 'interval', args=(database,), kwargs={'locks': (dlock,)}, minutes=1)
+    scheduler.add_job(refresh, 'interval', args=(database, cfg_path, systemd, db_path), kwargs={'locks': (dlock,)}, minutes=1)
     scheduler.start()
     logging.info("Daemon started")
     
