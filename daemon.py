@@ -31,7 +31,12 @@ def log_tail(filename, locks=()):
             locks_re(locks)
 
 def check_count(database, locks=()):
-    global users, warnings
+    global users, warnings, n_run
+    n_run = n_run + 1
+    if n_run => 5:
+        log.info("Clearing warnings")
+        n_run = 0
+        warnings = {}
     locks_aq(locks)
     for user, ips in counter(users):
         try:
@@ -62,15 +67,7 @@ def refresh(database, cfg_path, systemd, db_path, locks=()):
     log.info("Refreshing...")
     handle_refresh(database, cfg_path, systemd)
     locks_re(locks)
-    #sha1 = n_sha1
     
-def clear_warnings(locks=()):
-    global warnings
-    locks_aq(locks) 
-    warnings = {}
-    log.info("Warnings cleared")
-    locks_re(locks)
-
 def main():
     # Arguments
     parser = Daemon()
@@ -90,15 +87,15 @@ def main():
     log.info("Starting database located at: " + db_path)
     db = Database(db_path)
     database = db.session()
-    global users, warnings, sha1
+    global users, warnings, n_run
     users = {}
     warnings = {}
+    n_run = 0
     
     # Locks
     dlock = Lock()
     ulock = Lock()
-    wlock = Lock()
-        
+
     # Pre scheduler jobs
     handle_refresh(database, cfg_path, systemd)
 
@@ -106,8 +103,7 @@ def main():
     scheduler = BackgroundScheduler({'apscheduler.timezone': 'Asia/Tehran'})
     for filename in args.logs:
         scheduler.add_job(log_tail, args=(filename,), kwargs={'locks': (ulock,)})
-    scheduler.add_job(check_count, 'interval', args=(database,), kwargs={'locks': (ulock, dlock, wlock)}, seconds=15)
-    scheduler.add_job(clear_warnings, 'interval', kwargs={'locks': (wlock,)}, seconds=90)
+    scheduler.add_job(check_count, 'interval', args=(database,), kwargs={'locks': (ulock, dlock,)}, seconds=15)
     scheduler.add_job(check_expire, 'interval', args=(database,), kwargs={'locks': (dlock,)}, minutes=2)
     scheduler.add_job(check_traffic, 'interval', args=(database,), kwargs={'locks': (dlock,)}, minutes=1)
     scheduler.add_job(refresh, 'interval', args=(database, cfg_path, systemd, db_path), kwargs={'locks': (dlock,)}, seconds=30)
