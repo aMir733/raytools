@@ -350,6 +350,20 @@ def restart_remote(
         codes.append(subrun(['ssh', name, '--', 'systemctl', 'restart', '--', sc]).returncode)
     return codes
 
+def get_xdgruntime(default="."):
+    return os.environ().get('XDG_RUNTIME_DIR', default) 
+
+def refresh_required(required):
+    path = get_xdgruntime() + "/raytools_refresh"
+    if required:
+        with open(path, "w") as f:
+            pass
+        return
+    os.remove(path)
+
+def is_refresh_required():
+    return os.path.exists(get_xdgruntime() + "/raytools_refresh")
+
 def filesha1(filepath):
     statinfo = os.stat(filepath)
     if statinfo.st_size/1048576 < 200:

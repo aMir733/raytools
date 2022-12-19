@@ -25,7 +25,7 @@ def handle_add(database, username, count, expires, uuid=None, telegram=None):
             )
     database.add(user)
     database.commit()
-    #handle_refresh(database)
+    refresh_required()
     if telegram:
         handle_login(database, user, telegram)
 
@@ -46,21 +46,21 @@ def handle_uuid(database, user, uuid=None):
     user.uuid = uuid
     database.add(user)
     database.commit()
-    #handle_refresh(database)
+    refresh_required()
     
 def handle_renew(database, user, expires):
     user = handle_get(database, user)
     user.expires = parse_date(expires)
     database.add(user)
     database.commit()
-    #handle_refresh(database)
+    refresh_required()
 
 def handle_disable(database, user, reason="disabled"):
     user = handle_get(database, user)
     user.disabled = reason
     database.add(user)
     database.commit()
-    #handle_refresh(database)
+    refresh_required()
 
 def handle_enable(database, user):
     handle_disable(database, user, reason=None)
@@ -124,7 +124,7 @@ def handle_expired(database, expired, disable=False):
             user.disabled = "expired"
             database.add(user)
         database.commit()
-        #handle_refresh(database)
+        refresh_required()
         return
     return users
 
@@ -142,7 +142,7 @@ def handle_traffic(database):
         user.traffic = user.traffic + traffic
         database.add(user)
     database.commit()
-    #handle_refresh(database)
+    handle_refresh(database)
     api("statsquery", "-reset=true") # Reset the traffic
 
 def handle_login(database, user, telegram):

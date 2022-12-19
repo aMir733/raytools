@@ -56,11 +56,8 @@ def check_traffic(database, locks=()):
     locks_re(locks)
     
 def refresh(database, cfg_path, systemd, db_path, locks=()):
-    #global sha1
-    #n_sha1 = filesha1(db_path)
-    #if sha1 == n_sha1:
-    #    log.info("Skipped refreshing")
-    #    return
+    if not is_refresh_required():
+        return
     locks_aq(locks)
     log.info("Refreshing...")
     handle_refresh(database, cfg_path, systemd)
@@ -112,7 +109,7 @@ def main():
     scheduler.add_job(clear_warnings, 'interval', kwargs={'locks': (wlock,)}, minutes=5)
     scheduler.add_job(check_expire, 'interval', args=(database,), kwargs={'locks': (dlock,)}, minutes=2)
     scheduler.add_job(check_traffic, 'interval', args=(database,), kwargs={'locks': (dlock,)}, minutes=1)
-    #scheduler.add_job(refresh, 'interval', args=(database, cfg_path, systemd, db_path), kwargs={'locks': (dlock,)}, minutes=1)
+    scheduler.add_job(refresh, 'interval', args=(database, cfg_path, systemd, db_path), kwargs={'locks': (dlock,)}, seconds=30)
     scheduler.start()
     logging.info("Daemon started")
     
