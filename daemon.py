@@ -45,8 +45,9 @@ def check_count(database, locks=()):
         except KeyError:
             warnings[user] = 1
         log.info("WAR/COUNT: {}: {}: {}".format(user, warnings[user], ' '.join(ips)))
+        log.debug(warnigns)
         if warnings[user] > 4:
-            logging.warning("DIS/COUNT: '{}'".format(user))
+            logging.warning("DISCONNECT/COUNT: '{}'".format(user))
             log.info(handle_disable(database, (int(user), "id"), reason="count"))
     users = {}
     locks_re(locks)
