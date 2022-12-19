@@ -33,7 +33,7 @@ def log_tail(filename, locks=()):
 def check_count(database, locks=()):
     global users, warnings, n_run
     n_run = n_run + 1
-    if n_run => 5:
+    if n_run >= 5:
         log.info("Clearing warnings")
         n_run = 0
         warnings = {}
