@@ -70,10 +70,10 @@ def handle_disable(database, user, reason="disabled"):
     refresh_required()
     return user
 
-def handle_enable(database, user, reset_traffic=False):
+def handle_enable(database, user, reset=False):
     user = handle_get(database, user)
     user.disabled = None
-    if reset_traffic:
+    if reset:
         user.traffic = 0
     database.add(user)
     database.commit()
