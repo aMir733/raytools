@@ -74,13 +74,10 @@ def clear_warnings(locks=()):
     log.info("Warnings cleared")
     locks_re(locks)
 
-def init_args():
-    parser = Daemon()
-    return parser.parse()
-
 def main():
     # Arguments
-    args = init_args()
+    parser = Daemon()
+    args = parser.parse()
     
     # Logging
     configure_logging(

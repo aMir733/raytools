@@ -8,3 +8,4 @@ __pycache__/
 single.py
 raytools.yaml
 *.swp
+*.log

@@ -141,7 +141,7 @@ class Daemon(Base):
         #self.parser.add_argument('-v', '--verbose', action="count", help="verbosity level")
         self.parser.add_argument('-c', '--configuration', type=str, required=True, help=self.configuration_help)
         self.parser.add_argument('-s', '--systemd', type=str, required=True, help="Xray\'s systemd service name (Just in case)")
-        self.parser.add_argument('-o', '--output-log', default="/var/log/raytools.log", help="Where to output log files")
+        self.parser.add_argument('-l', '--output-log', default="./raytools-daemon.log", help="Where to write logs")
         self.parser.add_argument('logs', type=str, nargs='+', help='Log files to watch for user activity')
 
 class Robot(Base):
@@ -151,6 +151,7 @@ class Robot(Base):
             formatter_class=ArgumentDefaultsHelpFormatter,
             )
         self.parser.add_argument('-y', '--yaml', type=str, default=None, help=self.yaml_help)
+        self.parser.add_argument('-l', '--output-log', default="./raytools-robot.log", help="Where to write logs")
         self.parser.add_argument(
             '-d', '--database', type=str, default=env.get("RT_DATABASE"),
             help=self.db_help
