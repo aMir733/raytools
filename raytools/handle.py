@@ -41,15 +41,6 @@ def handle_get(database, user):
             ).one()
     return user
 
-def handle_uuid(database, user, uuid=None):
-    uuid = uuid if uuid else make_uuid()
-    user = handle_get(database, user)
-    user.uuid = uuid
-    database.add(user)
-    database.commit()
-    refresh_required()
-    return user
-    
 def handle_renew(database, user, expires):
     user = handle_get(database, user)
     user.expires = parse_date(expires)

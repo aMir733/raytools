@@ -68,6 +68,7 @@ class Raytools(Base):
         Raytools.parser_add = self.subparser.add_parser('add', help='Add a new user')
         Raytools.parser_get = self.subparser.add_parser('get', help='Get user\'s client information')
         Raytools.parser_renew = self.subparser.add_parser('renew', help='Renew user\'s subscription')
+        Raytools.parser_revoke = self.subparser.add_parser('revoke', help='Revoke user\'s uuid')
         Raytools.parser_uuid = self.subparser.add_parser('uuid', help='Modify user\'s UUID')
         Raytools.parser_disable = self.subparser.add_parser('disable', help='Disable (deactivate) a user')
         Raytools.parser_enable = self.subparser.add_parser('enable', help='Enable (activate) a user')
@@ -96,9 +97,9 @@ class Raytools(Base):
         # renew arguments
         self.parser_renew.add_argument('user', type=str, help=self.username_help)
         self.parser_renew.add_argument('-e', '--expires', type=str, required=True, help=self.date_help + ' Subscription\'s end date.')
-        # uuid arguments
-        self.parser_uuid.add_argument('user', type=str, help=self.username_help)
-        self.parser_uuid.add_argument('-u', '--uuid', type=str, default=None, help='UUID to use for this user')
+        # revoke arguments
+        self.parser_revoke.add_argument('user', type=str, help=self.username_help)
+        self.parser_revoke.add_argument('-u', '--uuid', type=str, default=None, help='UUID to use for this user. Randomize if not set')
         # disable arguments
         self.parser_disable.add_argument('user', type=str, help=self.username_help)
         self.parser_disable.add_argument(
@@ -107,7 +108,7 @@ class Raytools(Base):
             )
         # enable arguments
         self.parser_enable.add_argument('user', type=str, help=self.username_help)
-        self.parser_uuid.add_argument('-r', '--reset', action="store_true", help='Also resets user\'s traffic')
+        self.parser_enable.add_argument('-r', '--reset', action="store_true", help='Also resets user\'s traffic')
         # refresh arguments
         self.parser_refresh.add_argument('-c', '--configuration', type=str, default=stdin, help=self.configuration_help)
         self.parser_refresh.add_argument('-s', '--systemd', type=str, required=True, help="Xray\'s systemd service name (Just in case)")
