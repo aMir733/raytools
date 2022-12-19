@@ -100,7 +100,8 @@ def main():
     wlock = Lock()
         
     # Pre scheduler jobs
-    refresh(database, cfg_path, systemd, db_path, locks=())    
+    handle_refresh(database, cfg_path, systemd)
+
     # Scheduler
     scheduler = BackgroundScheduler({'apscheduler.timezone': 'Asia/Tehran'})
     for filename in args.logs:
