@@ -51,6 +51,8 @@ def handle_uuid(database, user, uuid=None):
 def handle_renew(database, user, expires):
     user = handle_get(database, user)
     user.expires = parse_date(expires)
+    if user.disable == "expired":
+        user.disable = None
     database.add(user)
     database.commit()
     refresh_required()
