@@ -356,7 +356,7 @@ def get_env():
 def get_xdgruntime(default="."):
     return get_env().get('XDG_RUNTIME_DIR', default) 
 
-def refresh_required(required):
+def refresh_required(required=True):
     path = get_xdgruntime() + "/raytools_refresh"
     if required:
         with open(path, "w") as f:

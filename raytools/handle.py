@@ -96,6 +96,7 @@ def handle_refresh(database, configuration=CONFIGURATION, systemd=SYSTEMD, v2ray
     adi = api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, timeout=2, port=port)
     if adi.returncode == 0:
         log.info("Successfully refreshed")
+        refresh_required(False)
         return True
     log.error("adi failed with error: " + adi.stderr.decode())
 
