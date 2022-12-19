@@ -121,7 +121,7 @@ def handle_expired(database, expired, disable=False):
     log.info("Showing users that expire before " + str(stamptotime(date)))
     users = database.exec(select(User).where(User.expires < date, User.disabled == None)).all()
     log.info("Count: %s" % len(users))
-    if disable:
+    if users, disable:
         log.warning("Disabling {} users".format(len(users)))
         for user in users:
             user.disabled = "expired"
@@ -129,7 +129,6 @@ def handle_expired(database, expired, disable=False):
         database.commit()
         refresh_required()
         return
-    return users
 
 def handle_traffic(database):
     out = api("statsquery").stdout.decode()
