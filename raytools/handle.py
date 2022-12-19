@@ -93,7 +93,6 @@ def handle_refresh(database, configuration=CONFIGURATION, systemd=SYSTEMD, v2ray
         if i + 1 == max_tries:
             log.error("Restarting systemd because xray crashed")
             systemd_restart(systemd)
-    sleep(1)
     adi = api("adi", infile=jsondumps(add_inbounds).encode(), backend=backend, timeout=2, port=port)
     if adi.returncode == 0:
         log.info("Successfully refreshed")
