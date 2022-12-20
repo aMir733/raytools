@@ -52,8 +52,6 @@ class Base:
         if "verbose" in args.__dict__:
             if args.quiet:
                 self.parser.error("Cannot be quiet (-q) and loud (-v) at the same time")
-            if args.verbose > 4:
-                args.verbose = 4
         args.database = path.expanduser(args.database)
         args.yaml = ycfg
         return args
