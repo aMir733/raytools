@@ -34,11 +34,11 @@ def log_tail(filename, locks=()):
 def check_count(database, locks=()):
     global users, warnings, n_run
     n_run = n_run + 1
-    log.info(f"check_count's {str(n_run)}th run")
-    if n_run >= MAX_RUN:
+    if n_run > MAX_RUN:
         log.info("Clearing warnings")
         n_run = 0
         warnings = {}
+    log.info(f"check_count's {str(n_run)}th run")
     locks_aq(locks)
     for user, ips in counter(users):
         try:
