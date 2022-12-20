@@ -49,8 +49,7 @@ class Base:
             if not "database" in ycfg:
                 self.parser.error("Database not set. -d --database or RT_DATABASE=")
             args.database = ycfg.pop("database")
-        if "verbose" in args.__dict__:
-            if args.quiet:
+        if args.quiet and args.verbose:
                 self.parser.error("Cannot be quiet (-q) and loud (-v) at the same time")
         args.database = path.expanduser(args.database)
         args.yaml = ycfg
