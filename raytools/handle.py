@@ -41,11 +41,13 @@ def handle_get(database, user):
             ).one()
     return user
 
-def handle_renew(database, user, expires):
+def handle_renew(database, user, expires, reset=False):
     user = handle_get(database, user)
     user.expires = parse_date(expires)
     if user.disabled == "expired":
         user.disabled = None
+    if reset:
+        user.traffic = 0
     database.add(user)
     database.commit()
     refresh_required()

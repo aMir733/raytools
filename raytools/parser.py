@@ -96,6 +96,7 @@ class Raytools(Base):
         # renew arguments
         self.parser_renew.add_argument('user', type=str, help=self.username_help)
         self.parser_renew.add_argument('-e', '--expires', type=str, required=True, help=self.date_help + ' Subscription\'s end date.')
+        self.parser_renew.add_argument('-r', '--reset', action="store_true", help='Also resets user\'s traffic')
         # revoke arguments
         self.parser_revoke.add_argument('user', type=str, help=self.username_help)
         self.parser_revoke.add_argument('-u', '--uuid', type=str, default=None, help='UUID to use for this user. Randomize if not set')
