@@ -10,6 +10,7 @@ from threading import Lock
 from hashlib import md5
 import logging
 
+MAX_WARN, MAX_RUN = 5, 8
 
 def log_tail(filename, locks=()):
     global users
@@ -34,7 +35,7 @@ def check_count(database, locks=()):
     global users, warnings, n_run
     n_run = n_run + 1
     log.info(f"check_count's {str(n_run)}th run")
-    if n_run >= 5:
+    if n_run >= MAX_RUN:
         log.info("Clearing warnings")
         n_run = 0
         warnings = {}
@@ -46,7 +47,7 @@ def check_count(database, locks=()):
             warnings[user] = 1
         log.info("WAR/COUNT: {}: {}: {}".format(user, warnings[user], ' '.join(ips)))
         log.debug(warnings)
-        if warnings[user] > 4:
+        if warnings[user] >= MAX_WARN:
             logging.warning("DISCONNECT/COUNT: '{}'".format(user))
             log.info(handle_disable(database, (int(user), "id"), reason="count"))
     users = {}

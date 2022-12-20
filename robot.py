@@ -45,8 +45,28 @@ def read_keyboard(keyboard):
         final[i.callback_data] = i.text
     return final
 
-async def add(update, context):
-    if len(context.args) == 0 or not re.match(r"^[0-9]{11}(\-[0-9]+)?$", context.args[0]):
+def check_username(username):
+    return re.match(r"^[0-9]{11}(\-[0-9]+)?$", username)
+
+def check_uuid(uuid):
+    return isuuid(uuid)
+
+def get_date(date):
+    try:
+        return parse_date(date)
+    except:
+        pass
+
+def check_count(count):
+    return count.isdigit()
+
+def check_args(args):
+    if len(args) == 0 or not check_username(args[0]):
+        return None
+    return True
+
+async def add_menu(update, context):
+    if not check_args(context.args):
         await update.message.reply_text("نامعتبر")
         return ConversationHandler.END
     keyboard = [
@@ -61,6 +81,23 @@ async def add(update, context):
                 InlineKeyboardButton("ثبت✅", callback_data=str(DONE)),
                 InlineKeyboardButton("لغو❌", callback_data=str(CANCEL))
             ],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(context.args[0], reply_markup=reply_markup)
+    return MENU
+
+async def renew_menu(update, context):
+    if not check_args(context.args):
+        await update.message.reply_text("نامعتبر")
+        return ConversationHandler.END
+    keyboard = [
+        [
+            InlineKeyboardButton("+30", callback_data=str(DATE))
+        ],
+        [
+                InlineKeyboardButton("ثبت✅", callback_data=str(DONE)),
+                InlineKeyboardButton("لغو❌", callback_data=str(CANCEL))
+        ],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(context.args[0], reply_markup=reply_markup)
@@ -81,7 +118,7 @@ async def edit_count(update, context):
     query = update.callback_query
     context.user_data["query"] = query
     await query.answer()
-    await context.bot.send_message(update.effective_chat.id, "هشدار . لطفا تعداد را تغییر ندهید. هر یو یو ای وارد یک گوشی باید وارد شود. انرا به یک ست کنید")
+    await context.bot.send_message(update.effective_chat.id, "هشدار . لطفا تعداد را تغییر ندهید. هر یو یو ای وارد یک گوشی باید شود")
     await context.bot.send_message(update.effective_chat.id, "لطفا تعداد را ریپلای کنید")
     return EDIT
 
@@ -109,7 +146,7 @@ async def cancel(update, context):
     await context.bot.send_message(update.effective_chat.id, "لغو شد")
     return ConversationHandler.END
     
-async def done(update, context):
+async def add(update, context):
     query = update.callback_query
     await query.answer()
     message = query.message
@@ -118,19 +155,6 @@ async def done(update, context):
     count = res[str(COUNT)]
     uuid = res[str(UUID)]
     date = res[str(DATE)]
-    if not re.match(r"^[0-9]{11}(\-[0-9]+)?$", username):
-        await context.bot.send_message(update.effective_chat.id, "شماره نامعتبر")
-        return ConversationHandler.END
-    if not isuuid(uuid):
-        await context.bot.send_message(update.effective_chat.id, "یو یو ای دی نامعتبر")
-        return ConversationHandler.END
-    try:
-        expires = parse_date(date)
-    except:
-        await context.bot.send_message(update.effective_chat.id, "تاریخ نامعتبر")
-        return ConversationHandler.END
-    if count != "1":
-        await context.bot.send_message(update.effective_chat.id, "هشدار . لطفا تعداد را تغییر ندهید. هر یو یو ای وارد یک گوشی باید وارد شود")
     try:
         handle_add(database, username=username, count=count, expires=expires, uuid=uuid)
     except:
@@ -149,7 +173,7 @@ def main():
     args = parser.parse()
     configure_logging(
         logging,
-        level=0,
+        level=10,
         format="%(asctime)s (%(name)s): %(message)s",
         filename=args.output_log,
         )
@@ -165,24 +189,45 @@ def main():
     app = ApplicationBuilder().token(args.yaml["token"]).build()
     filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
     
+    EDIT_COUNT = CallbackQueryHandler(edit_count, "^" + str(COUNT) + "$"),
+    EDIT_DATE = CallbackQueryHandler(edit_date, "^" + str(DATE) + "$"),
+    EDIT_UUID = CallbackQueryHandler(edit_uuid, "^" + str(UUID) + "$"),
+    
+    ADMIN_CHAT = filters.Chat(args.yaml["chat"])
     app.add_handler(
         ConversationHandler(
-            entry_points=[CommandHandler("add", add, filters=(filters.Chat(args.yaml["chat"])))],
+            entry_points=[CommandHandler("add", add_menu, filters=(ADMIN_CHAT))],
             states={
                 MENU: [
-                    CallbackQueryHandler(edit_count, "^" + str(COUNT) + "$"),
-                    CallbackQueryHandler(edit_date, "^" + str(DATE) + "$"),
-                    CallbackQueryHandler(edit_uuid, "^" + str(UUID) + "$"),
+                    EDIT_COUNT,
+                    EDIT_DATE,
+                    EDIT_UUID,
                 ],
                 EDIT: [
-                    MessageHandler(filters.TEXT, edit)                    
+                    MessageHandler(filters.TEXT, edit)
                 ],
             },
             fallbacks=[
-                CallbackQueryHandler(done, "^" + str(DONE) + "$"),
+                CallbackQueryHandler(add, "^" + str(DONE) + "$"),
                 CallbackQueryHandler(cancel, "^" + str(CANCEL) + "$"),
-                MessageHandler(filters.Regex("^CANCEL$"), cancel),
-                ],
+            ],
+        )
+    )
+    app.add_handler(
+        ConversationHandler(
+            entry_points=[CommandHandler("renew", renew_menu, filters=(ADMIN_CHAT))],
+            state={
+                MENU: [
+                    EDIT_DATE,                    
+                ]
+                EDIT: [
+                    MessageHandler(filters.TEXT, edit)
+                ]
+            },
+            fallbacks=[
+                CallbackQueryHandler(renew, "^" + str(DONE) + "$"),
+                CallbackQueryHandler(cancel, "^" + str(CANCEL) + "$"),
+            ],
         )
     )
 
