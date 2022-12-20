@@ -49,8 +49,6 @@ class Base:
             if not "database" in ycfg:
                 self.parser.error("Database not set. -d --database or RT_DATABASE=")
             args.database = ycfg.pop("database")
-        if args.quiet and args.verbose:
-                self.parser.error("Cannot be quiet (-q) and loud (-v) at the same time")
         args.database = path.expanduser(args.database)
         args.yaml = ycfg
         return args
@@ -80,7 +78,7 @@ class Raytools(Base):
             '-d', '--database', type=str, default=env.get("RT_DATABASE"),
             help=self.db_help
             )
-        self.parser.add_argument('-q', '--quiet', action="store_true", help="quiet output")
+        self.parser.add_argument('-q', '--quiet', action="store_true", default=False, help="quiet output")
         self.parser.add_argument('-v', '--verbose', action="count", default=None, help="verbosity level")
         # add arguments
         self.parser_add.add_argument('username', type=str, help=self.username_new_help)
@@ -136,8 +134,6 @@ class Daemon(Base):
             '-d', '--database', type=str, default=env.get("RT_DATABASE"),
             help=self.db_help
             )
-        #self.parser.add_argument('-q', '--quiet', action="store_true", help="quiet output")
-        #self.parser.add_argument('-v', '--verbose', action="count", default=None, help="verbosity level")
         self.parser.add_argument('-c', '--configuration', type=str, required=True, help=self.configuration_help)
         self.parser.add_argument('-s', '--systemd', type=str, required=True, help="Xray\'s systemd service name (Just in case)")
         self.parser.add_argument('-l', '--output-log', default="./raytools-daemon.log", help="Where to write logs")

@@ -23,6 +23,7 @@ from telegram.ext import (
 
 MENU, EDIT = range(2)
 COUNT, DATE, UUID, DONE, CANCEL = range(5)
+SPLIT = ": "
 
 MGS = {
     "user": "👤 کاربری",
@@ -105,11 +106,11 @@ async def add_menu(update, context):
         return ConversationHandler.END
     keyboard = [
             [
-                InlineKeyboardButton("1", callback_data=str(COUNT)),
-                InlineKeyboardButton("+30", callback_data=str(DATE)),
+                InlineKeyboardButton(f"{MGS['count']}{SPLIT}1", callback_data=str(COUNT)),
+                InlineKeyboardButton(f"{MGS['date']}{SPLIT}+30", callback_data=str(DATE)),
             ],
             [
-                InlineKeyboardButton(make_uuid(), callback_data=str(UUID)),
+                InlineKeyboardButton(f"{MGS['uuid']}{SPLIT}{make_uuid()}", callback_data=str(UUID)),
             ],
             [
                 InlineKeyboardButton(MGS["confirm"], callback_data=str(DONE)),
@@ -126,7 +127,7 @@ async def renew_menu(update, context):
         return ConversationHandler.END
     keyboard = [
         [
-            InlineKeyboardButton("+30", callback_data=str(DATE))
+            InlineKeyboardButton(f"{MGS['date']}{SPLIT}+30", callback_data=str(DATE))
         ],
         [
                 InlineKeyboardButton(MGS["confirm"], callback_data=str(DONE)),
@@ -138,8 +139,9 @@ async def renew_menu(update, context):
     return MENU
 
 async def edit(update, context):
-    text = update.message.text
     query = context.user_data["query"]
+    res = read_keyboard(query.message.reply_markup.inline_keyboard)
+    text = f"{res[query.data].split(SPLIT)[0]}{SPLIT}{update.message.text}"
     message = query.message
     keyboard = message.reply_markup.inline_keyboard
     keyboard = replace_keyboard(keyboard, query.data, InlineKeyboardButton(text=text, callback_data=query.data))
@@ -186,9 +188,9 @@ async def add(update, context):
     message = query.message
     res = read_keyboard(message.reply_markup.inline_keyboard)
     username = message.text
-    count = res[str(COUNT)]
-    uuid = res[str(UUID)]
-    date = get_date(res[str(DATE)])
+    count = res[str(COUNT)].split(SPLIT)[1]
+    uuid = res[str(UUID)].split(SPLIT)[1]
+    date = get_date(res[str(DATE)].split(SPLIT)[1])
     if not check_username(username):
         await context.bot.send_message(update.effective_chat.id, MGS["invalid_user"] + f": {count}")
         return ConversationHandler.END
@@ -227,7 +229,7 @@ async def renew(update, context):
     message = query.message
     res = read_keyboard(message.reply_markup.inlinke_keyboard)
     username = message.text
-    date = get_date(res[str(DATE)])
+    date = get_date(res[str(DATE)].split(SPLIT)[1])
     if not check_username(username):
         await context.bot.send_message(update.effective_chat.id, MGS["invalid_user"] + f": {count}")
         return ConversationHandler.END
@@ -277,6 +279,7 @@ async def get(update, context):
             f"{MGS['traffic']}: {readable_size(user.traffic)}",
             f"{MGS['date']}: {time_str}",
             ))
+
     await update.message.reply_text(esc_markdown(text), parse_mode="MarkdownV2")
 
 def main():
