@@ -380,6 +380,13 @@ def filesha1(filepath):
       out = subrun(cmd)
       return out.stdout.decode().split()[0] 
 
+def readable_size(num, suffix="B"):
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+        if abs(num) < 1024.0:
+            return f"{num:3.1f}{unit}{suffix}"
+        num /= 1024.0
+    return f"{num:.1f}Yi{suffix}"
+
 def make_uuid():
     return str(uuid4())
 
@@ -396,14 +403,14 @@ def timenow():
 def timemake(date):
     return datetime(*[int(i) for i in date])
 
-def timedelta(date, days): # Increment/Decrement days in timestamp or datetime object. Returns timestamp
+def timedelta(date, days):
     if isinstance(date, datetime):
         date = timetostamp(date)
     if isinstance(date, int):
         return date + days * 86400
     raise Exception("Invalid Type")
 
-def strtotime(date): # Converts standard ISO8601 string to datetime object
+def strtotime(date):
     if not isinstance(date, str):
         raise TypeError("Invalid Type")
     if "T" in date:
@@ -413,15 +420,15 @@ def strtotime(date): # Converts standard ISO8601 string to datetime object
     y, m, d = list(map(int, date.split('-')))
     return jdate(y, m, d)
 
-def timetostr(date): # Converts datetime object to standard ISO8601 string ("YYYY-MM-DD HH:MM:SS.SSS")
+def timetostr(date):
     if not isinstance(date, datetime):
         raise TypeError("Invalid Type")
-    return date.isoformat().split("T")[0]
+    return date.strftime("%Y/%m/%d , %H:%M")
 
-def stamptotime(date): # Converts timestamp to a datetime object
+def stamptotime(date):
     return datetime.fromtimestamp(date)
 
-def timetostamp(date): # Converts datetime object to timestamp
+def timetostamp(date):
     if not isinstance(date, datetime):
         raise TypeError("Invalid Type")
     return int(date.timestamp())

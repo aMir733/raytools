@@ -25,6 +25,7 @@ def handle_add(database, username, count, expires, uuid=None, telegram=None):
             )
     database.add(user)
     database.commit()
+    database.refresh(user)
     refresh_required()
     if telegram:
         handle_login(database, user, telegram)
@@ -50,6 +51,7 @@ def handle_renew(database, user, expires, reset=False):
         user.traffic = 0
     database.add(user)
     database.commit()
+    database.refresh(user)
     refresh_required()
     return user
 
@@ -61,6 +63,7 @@ def handle_revoke(database, user, uuid=None):
     user.uuid = uuid
     database.add(user)
     database.commit()
+    database.refresh(user)
     refresh_required()
     return user
 
@@ -69,6 +72,7 @@ def handle_disable(database, user, reason="disabled"):
     user.disabled = reason
     database.add(user)
     database.commit()
+    database.refresh(user)
     refresh_required()
     return user
 
@@ -79,6 +83,7 @@ def handle_enable(database, user, reset=False):
         user.traffic = 0
     database.add(user)
     database.commit()
+    database.refresh(user)
     refresh_required()
     return user
 

@@ -3,6 +3,7 @@ from raytools.db import Database
 from raytools.log import *
 from raytools.func import *
 from raytools.handle import *
+from sqlalchemy.exc import *
 import re
 from warnings import filterwarnings
 from telegram.warnings import PTBUserWarning
@@ -24,14 +25,17 @@ MENU, EDIT = range(2)
 COUNT, DATE, UUID, DONE, CANCEL = range(5)
 
 MGS = {
-    "user": "کاربری",
-    "count": "تعداد",
-    "date": "تاریخ",
-    "uuid": "آی دی"
+    "user": "👤 کاربری",
+    "count": "1️⃣ تعداد",
+    "date": "🕓 تاریخ انقضا",
+    "uuid": "🔐 آی دی",
+    "traffic": "〽️ ترافیک مصرفی",
+    "id": "🔢 آی دی عددی",
     "invalid": "نامعتبر",
     "error": "ارور",
     "confirm": "ثبت✅",
-    "registered": "ثبت شد✅",
+    "added": "ثبت شد✅",
+    "renewed": "تمدید شد✅",
     "cancel": "لغو❌",
     "canceled": "لغو شد.",
     "invalid_user": "کاربری نامعتبر",
@@ -43,6 +47,12 @@ MGS = {
     "reply_uuid": "آی دی را ریپلای کنید.",
     "count_one": "هشدار: لطفا برای هر یوزر و دستگاه یک آی دی وارد کنید.",
     "get_server": "دریافت سرور",
+    "user_exists": "کاربری در سیستم ثبت شده",
+    "user_notexists": "کاربری یافت نشد",
+    "status_enabled": "✅ فعال",
+    "status_disabled": "❌ غیر فعال",
+    "reason_count": "تعداد بیش از حد",
+    "reason_expired": "انقضا تاریخ",
 }
 
 def replace_keyboard(keyboard, callback_data, replace):
@@ -65,6 +75,9 @@ def read_keyboard(keyboard):
             continue
         final[i.callback_data] = i.text
     return final
+
+def esc_markdown(text):
+    return text.replace(".", "\.").replace("_", "\_").replace("-", "\-")
 
 def check_username(username):
     return re.match(r"^[0-9]{11}(\-[0-9]+)?$", username)
@@ -100,7 +113,7 @@ async def add_menu(update, context):
             ],
             [
                 InlineKeyboardButton(MGS["confirm"], callback_data=str(DONE)),
-                InlineKeyboardButton(MSG["cancel"], callback_data=str(CANCEL))
+                InlineKeyboardButton(MGS["cancel"], callback_data=str(CANCEL))
             ],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -116,13 +129,14 @@ async def renew_menu(update, context):
             InlineKeyboardButton("+30", callback_data=str(DATE))
         ],
         [
-                InlineKeyboardButton(MSG["confirm"]), callback_data=str(DONE)),
-                InlineKeyboardButton(MSG["cancel"], callback_data=str(CANCEL))
+                InlineKeyboardButton(MGS["confirm"], callback_data=str(DONE)),
+                InlineKeyboardButton(MGS["cancel"], callback_data=str(CANCEL))
         ],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(context.args[0], reply_markup=reply_markup)
     return MENU
+
 async def edit(update, context):
     text = update.message.text
     query = context.user_data["query"]
@@ -138,7 +152,7 @@ async def edit_count(update, context):
     query = update.callback_query
     context.user_data["query"] = query
     await query.answer()
-    await context.bot.send_message(update.effective_chat.id, MSG["count_one"])
+    await context.bot.send_message(update.effective_chat.id, MGS["count_one"])
     await context.bot.send_message(update.effective_chat.id, MGS["reply_count"])
     return EDIT
 
@@ -187,17 +201,24 @@ async def add(update, context):
     if not date:
         await context.bot.send_message(update.effective_chat.id, MGS["invalid_date"] + f": {date}")
         return ConversationHandler.END
+    database = db.session()
+    err = None
     try:
         handle_add(database, username=username, count=count, expires=date, uuid=uuid)
-    except:
-        await context.bot.send_message(update.effective_chat.id, MGS["error"])
+    except IntegrityError:
+        err = f"{MGS['error']}: {MGS['user_exists']}"
+    except Exception as e:
+        err = f"{MGS['error']}: {str(e)}"
+    if err:
+        await context.bot.send_message(update.effective_chat.id, err)
         await message.delete()
         return ConversationHandler.END
-    text = f"{MGS['registered']}\n {MGS['username']} `{username}`\{MGS['count']}: {count}\n{MGS['uuid']}: `{uuid}`\n{MGS['date']}: {date}"
+    time_str = timetostr(stamptotime(date))
+    text = f"{MGS['added']}\n{MGS['user']} `{username}`\n{MGS['count']}: {count}\n{MGS['uuid']}: `{uuid}`\n{MGS['date']}: {time_str}"
     title = update.effective_chat.title
     keyboard = [[InlineKeyboardButton(MGS["get_server"], url=f"https://t.me/{title}?start={uuid}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await context.bot.send_message(update.effective_chat.id, text, reply_markup=reply_markup, parse_mode="Markdown")
+    await context.bot.send_message(update.effective_chat.id, esc_markdown(text), reply_markup=reply_markup, parse_mode="MarkdownV2")
     return ConversationHandler.END
 
 async def renew(update, context):
@@ -213,8 +234,50 @@ async def renew(update, context):
     if not date:
         await context.bot.send_message(update.effective_chat.id, MGS["invalid_date"] + f": {date}")
         return ConversationHandler.END
+    database = db.session()
+    err = None
     try:
-        handle_renew(database, username=username, expires=date)
+        handle_renew(database, user=username, expires=date)
+    except NoResultFound:
+        err = f"{MGS['error']}: {MGS['user_notexists']}"
+    except Exception as e:
+        err = f"{MGS['error']}: {str(e)}"
+    if err:
+        await context.bot.send_message(update.effective_chat.id, err)
+        await message.delete()
+        return ConversationHandler.END
+    time_str = timetostr(stamptotime(date))
+    text = f"{MGS['renewd']}\n{MGS['user']} `{username}`\n{MGS['date']}: {time_str}"
+    await context.bot.send_message(update.effective_chat.id, esc_markdown(text), parse_mode="MarkdownV2")
+    return ConversationHandler.END
+
+async def get(update, context):
+    if not check_args(context.args):
+        await update.message.reply_text(MGS["invalid"])
+        return
+    username = context.args[0]
+    database = db.session()
+    err = None
+    try:
+        user = handle_get(database, user=username)
+    except NoResultFound:
+        err = f"{MGS['error']}: {MGS['user_notexists']}"
+    except Exception as e:
+        err = f"{MGS['error']}: {str(e)}"
+    if err:
+        await context.bot.send_message(update.effective_chat.id, err)
+        return
+    status = MGS['status_enabled'] if not user.disabled else f"{MGS['status_disabled']}: {MGS.get('reason_' + str(user.disabled), str(user.disabled))}"
+    time_str = timetostr(stamptotime(user.expires))
+    text = '\n'.join((f"{MGS['user']} `{username}`",
+            f"{status}",
+            f"{MGS['id']}: {str(user.id)}",
+            f"{MGS['count']}: {str(user.count)}",
+            f"{MGS['uuid']}: `{user.uuid}`",
+            f"{MGS['traffic']}: {readable_size(user.traffic)}",
+            f"{MGS['date']}: {time_str}",
+            ))
+    await update.message.reply_text(esc_markdown(text), parse_mode="MarkdownV2")
 
 def main():
     parser = Robot()
@@ -230,16 +293,17 @@ def main():
             raise KeyError(f"No {i} found in your yaml file")
 
     db_path = args.__dict__.pop('database')
+    global db
     db = Database(db_path)
-    global database
-    database = db.session()
 
     app = ApplicationBuilder().token(args.yaml["token"]).build()
     filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
     
-    EDIT_COUNT = CallbackQueryHandler(edit_count, "^" + str(COUNT) + "$"),
-    EDIT_DATE = CallbackQueryHandler(edit_date, "^" + str(DATE) + "$"),
-    EDIT_UUID = CallbackQueryHandler(edit_uuid, "^" + str(UUID) + "$"),
+    EDIT_COUNT = CallbackQueryHandler(edit_count, "^" + str(COUNT) + "$")
+    EDIT_DATE = CallbackQueryHandler(edit_date, "^" + str(DATE) + "$")
+    EDIT_UUID = CallbackQueryHandler(edit_uuid, "^" + str(UUID) + "$")
+    
+    FALL_CANCEL = CallbackQueryHandler(cancel, "^" + str(CANCEL) + "$")
     
     ADMIN_CHAT = filters.Chat(args.yaml["chat"])
     app.add_handler(
@@ -257,27 +321,28 @@ def main():
             },
             fallbacks=[
                 CallbackQueryHandler(add, "^" + str(DONE) + "$"),
-                CallbackQueryHandler(cancel, "^" + str(CANCEL) + "$"),
+                FALL_CANCEL,
             ],
         )
     )
     app.add_handler(
         ConversationHandler(
             entry_points=[CommandHandler("renew", renew_menu, filters=(ADMIN_CHAT))],
-            state={
+            states={
                 MENU: [
                     EDIT_DATE,                    
-                ]
+                ],
                 EDIT: [
                     MessageHandler(filters.TEXT, edit)
-                ]
+                ],
             },
             fallbacks=[
                 CallbackQueryHandler(renew, "^" + str(DONE) + "$"),
-                CallbackQueryHandler(cancel, "^" + str(CANCEL) + "$"),
+                FALL_CANCEL,
             ],
         )
     )
+    app.add_handler(CommandHandler("get", get, filters=(ADMIN_CHAT)))
 
     app.run_polling()
 
