@@ -293,9 +293,6 @@ async def renew(update, context):
     res = read_keyboard(message.reply_markup.inline_keyboard)
     username = message.text
     date = get_date(res[str(DATE)].split(SPLIT)[1])
-    if not check_username(username):
-        await context.bot.send_message(update.effective_chat.id, MGS["invalid_user"] + f": {count}")
-        return ConversationHandler.END
     if not date:
         await context.bot.send_message(update.effective_chat.id, MGS["invalid_date"] + f": {date}")
         return ConversationHandler.END
