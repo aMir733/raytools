@@ -121,8 +121,6 @@ def read_args(args):
 async def add_menu(update, context):
     if len(context.args) == 0:
         return ConversationHandler.END
-    if not check_username(context.args[0]):
-        await update.message.reply_text(MGS["warning_invalidusername"])
     keyboard = [
             [
                 InlineKeyboardButton(f"{MGS['count']}{SPLIT}1", callback_data=str(COUNT)),
@@ -137,7 +135,7 @@ async def add_menu(update, context):
             ],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(context.args[0], reply_markup=reply_markup)
+    await context.bot.send_message(update.effective_chat.id, context.args[0], reply_markup=reply_markup)
     return MENU
 
 async def renew_menu(update, context):
@@ -147,8 +145,6 @@ async def renew_menu(update, context):
     args = read_args(context.args or query.data)
     if len(args) == 0:
         return ConversationHandler.END
-    if not check_username(args[0]):
-        await update.message.reply_text(MGS["warning_invalidusername"])
     keyboard = [
         [
             InlineKeyboardButton(f"{MGS['date']}{SPLIT}+30", callback_data=str(DATE))
