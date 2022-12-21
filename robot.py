@@ -246,7 +246,7 @@ async def cancel_noneed(update, context):
     await context.bot.send_message(update.effective_chat.id, MGS["canceled_noneed"])
     
 async def add(update, context):
-    if not (update.message or update.callback_query).from_user.id in ADMINS:
+    if not (update.message or update.callback_query).from_user.id in ADMINS_RW:
         return ConversationHandler.END
     query = update.callback_query
     await query.answer()
