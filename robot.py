@@ -24,7 +24,7 @@ from telegram.ext import (
 YES, NO = "✅", "❌"
 MENU, EDIT = range(2)
 REVOKE, RENEW = range(2)
-COUNT, DATE, UUID, ENABLE, DISABLE, DONE, CANCEL = range(7)
+COUNT, DATE, UUID, STATUS, DONE, CANCEL = range(6)
 SPLIT = ": "
 
 MGS = {
@@ -159,7 +159,8 @@ async def renew_menu(update, context):
         ],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(args[0], reply_markup=reply_markup)
+    text = args[0]
+    await context.bot.send_message(update.effective_chat.id, text, reply_markup=reply_markup)
     return MENU
 
 async def revoke_menu(update, context):
@@ -367,6 +368,7 @@ async def get(update, context):
     if err:
         await context.bot.send_message(update.effective_chat.id, err)
         return
+    username = user.username
     time_str = timetostr(stamptotime(user.expires))
     status = MGS['status_disabled'] if user.disabled else MGS['status_enabled']
     reason = f"{MGS.get('reason_' + str(user.disabled), str(user.disabled))}" if user.disabled else ""
@@ -383,7 +385,7 @@ async def get(update, context):
         l_row = []
     else:
         f_row = [InlineKeyboardButton(MGS["disable"], callback_data=f"{str(STATUS)}{SPLIT}{username}{SPLIT}0")]
-        l_row = [InlineKeyboardButton(MGS["get_server"], url=f"https://t.me/{update.effective_chat.title}?start={uuid}")]
+        l_row = [InlineKeyboardButton(MGS["get_server"], url=f"https://t.me/{update.effective_chat.title}?start={user.uuid}")]
     keyboard = [
         f_row,
         [
@@ -405,8 +407,8 @@ async def status(update, context):
     if len(args) > 2:
         return ConversationHandler.END
     message = query.message
-    username = arg[0]
-    reason = ("unknown", None)[int(arg[1])]
+    username = args[0]
+    reason = ("unknown", None)[int(args[1])]
     database = db.session()
     err = None
     try:
@@ -419,7 +421,8 @@ async def status(update, context):
         await context.bot.send_message(update.effective_chat.id, err)
         await message.delete()
         return ConversationHandler.END
-    text = f"{MGS["enabled" if reason else "disabled"]}\n{MGS['user']} `{username}`"
+    msg = MGS['disabled'] if reason else MGS['enabled']
+    text = f"{msg}\n{MGS['user']} `{username}`"
     await context.bot.send_message(update.effective_chat.id, esc_markdown(text), parse_mode="MarkdownV2")
     await message.delete()
     return ConversationHandler.END
@@ -518,7 +521,7 @@ def main():
     )
     app.add_handler(CommandHandler("get", get, filters=READ_ONLY))
     app.add_handler(CommandHandler("cancel", cancel_noneed, filters=(filters.ALL)))
-    app.add_handler(CallbackQueryHandler(
+    app.add_handler(CallbackQueryHandler(status, f"^{str(STATUS)}{SPLIT}"))
 
     app.run_polling()
 
