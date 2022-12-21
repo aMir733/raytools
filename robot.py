@@ -256,7 +256,7 @@ async def add(update, context):
     count = res[str(COUNT)].split(SPLIT)[1]
     uuid = res[str(UUID)].split(SPLIT)[1]
     date = get_date(res[str(DATE)].split(SPLIT)[1])
-    if not check_username(context.args[0]):
+    if not check_username(username):
         await update.message.reply_text(MGS["warning_invalidusername"])
     if not check_count(count):
         await context.bot.send_message(update.effective_chat.id, MGS["invalid_count"] + f": {count}")
