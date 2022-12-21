@@ -61,6 +61,8 @@ def handle_revoke(database, user, uuid=None):
         raise ValueError(f"'{uuid}' is not a valid UUID")
     user = handle_get(database, user)
     user.uuid = uuid
+    if user.disabled == "count":
+        user.disabled = None
     database.add(user)
     database.commit()
     database.refresh(user)

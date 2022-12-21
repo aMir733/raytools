@@ -5,6 +5,7 @@ ref/
 __pycache__/
 *.db
 *.db_*
+*.db.*
 single.py
 raytools.yaml
 *.swp

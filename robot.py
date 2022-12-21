@@ -21,8 +21,10 @@ from telegram.ext import (
     filters,
 )
 
+YES, NO = "✅", "❌"
 MENU, EDIT = range(2)
-COUNT, DATE, UUID, DONE, CANCEL = range(5)
+REVOKE, RENEW = range(2)
+COUNT, DATE, UUID, ENABLE, DISABLE, DONE, CANCEL = range(7)
 SPLIT = ": "
 
 MGS = {
@@ -37,8 +39,16 @@ MGS = {
     "confirm": "ثبت✅",
     "added": "ثبت شد✅",
     "renewed": "تمدید شد✅",
+    "revoked": "✅آی دی تغییر یافت",
     "cancel": "لغو❌",
     "canceled": "لغو شد.",
+    "canceled_noneed": "شما در حین عملیاتی نیستید.",
+    "revoke": "تغییر آی دی",
+    "renew": "تغییر تاریخ",
+    "enable": "فعال",
+    "disable": "غیر فعال",
+    "enabled": "✅فعال شد",
+    "disabled": "❌غیر فعال شد",
     "invalid_user": "کاربری نامعتبر",
     "invalid_count": "تعداد نامعتبر",
     "invalid_date": "تاریخ نامعتبر",
@@ -54,6 +64,9 @@ MGS = {
     "status_disabled": "❌ غیر فعال",
     "reason_count": "تعداد بیش از حد",
     "reason_expired": "انقضا تاریخ",
+    "warning_invalidusername": "هشدار! شماره تماس وارد شده درست نمیباشد. برای بازگشت از دکمه لغو استفاده کنید.",
+    "menu_revoke": "تغییر یو یو آی دی",
+    "for_user": "برای کاربری",
 }
 
 def replace_keyboard(keyboard, callback_data, replace):
@@ -96,14 +109,20 @@ def check_count(count):
     return count.isdigit()
 
 def check_args(args):
-    if len(args) == 0 or not check_username(args[0]):
+    if len(args) == 0:
         return None
     return True
 
+def read_args(args):
+    if isinstance(args, str):
+        return args.split(SPLIT)[1:]
+    return args
+
 async def add_menu(update, context):
-    if not check_args(context.args):
-        await update.message.reply_text(MGS["invalid"])
+    if len(context.args) == 0:
         return ConversationHandler.END
+    if not check_username(context.args[0]):
+        await update.message.reply_text(MGS["warning_invalidusername"])
     keyboard = [
             [
                 InlineKeyboardButton(f"{MGS['count']}{SPLIT}1", callback_data=str(COUNT)),
@@ -122,20 +141,48 @@ async def add_menu(update, context):
     return MENU
 
 async def renew_menu(update, context):
-    if not check_args(context.args):
-        await update.message.reply_text(MGS["invalid"])
+    query = update.callback_query
+    if query:
+        await query.answer()
+    args = read_args(context.args or query.data)
+    if len(args) == 0:
         return ConversationHandler.END
+    if not check_username(args[0]):
+        await update.message.reply_text(MGS["warning_invalidusername"])
     keyboard = [
         [
             InlineKeyboardButton(f"{MGS['date']}{SPLIT}+30", callback_data=str(DATE))
         ],
         [
-                InlineKeyboardButton(MGS["confirm"], callback_data=str(DONE)),
-                InlineKeyboardButton(MGS["cancel"], callback_data=str(CANCEL))
+            InlineKeyboardButton(MGS["confirm"], callback_data=str(DONE)),
+            InlineKeyboardButton(MGS["cancel"], callback_data=str(CANCEL))
         ],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(context.args[0], reply_markup=reply_markup)
+    await update.message.reply_text(args[0], reply_markup=reply_markup)
+    return MENU
+
+async def revoke_menu(update, context):
+    query = update.callback_query
+    if query:
+        await query.answer()
+    args = read_args(context.args or query.data)
+    if len(args) == 0:
+        return ConversationHandler.END
+    uuid = make_uuid()
+    keyboard = [
+        [
+            InlineKeyboardButton(f"{MGS['uuid']}{SPLIT}{uuid}", callback_data=str(UUID))
+        ],
+        [
+            InlineKeyboardButton(MGS["confirm"], callback_data=str(DONE)),
+            InlineKeyboardButton(MGS["cancel"], callback_data=str(CANCEL))
+        ],
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    #text = f"{MGS['menu_revoke']}{MGS['for_user']}: {args[0]}"
+    text = args[0]
+    await context.bot.send_message(update.effective_chat.id, text, reply_markup=reply_markup)
     return MENU
 
 async def edit(update, context):
@@ -149,6 +196,18 @@ async def edit(update, context):
     await context.bot.send_message(update.effective_chat.id, message.text, reply_markup=reply_markup)
     await message.delete()
     return MENU
+
+async def edit_revoke(update, context):
+    query = update.callback_query
+    args = query.data.split(SPLIT)
+    context.user_data["query"] = args
+    await query.answer()
+    try:
+        username = args[1]
+    except IndexError:
+        return ConversationHandler.END
+    await context.bot.send_message(update.effective_chat.id, MGS["reply_uuid"])
+    return EDIT
 
 async def edit_count(update, context):
     query = update.callback_query
@@ -181,8 +240,13 @@ async def cancel(update, context):
         pass
     await context.bot.send_message(update.effective_chat.id, MGS["canceled"])
     return ConversationHandler.END
+
+async def cancel_noneed(update, context):
+    await context.bot.send_message(update.effective_chat.id, MGS["canceled_noneed"])
     
 async def add(update, context):
+    if not (update.message or update.callback_query).from_user.id in ADMINS:
+        return ConversationHandler.END
     query = update.callback_query
     await query.answer()
     message = query.message
@@ -191,9 +255,8 @@ async def add(update, context):
     count = res[str(COUNT)].split(SPLIT)[1]
     uuid = res[str(UUID)].split(SPLIT)[1]
     date = get_date(res[str(DATE)].split(SPLIT)[1])
-    if not check_username(username):
-        await context.bot.send_message(update.effective_chat.id, MGS["invalid_user"] + f": {count}")
-        return ConversationHandler.END
+    if not check_username(context.args[0]):
+        await update.message.reply_text(MGS["warning_invalidusername"])
     if not check_count(count):
         await context.bot.send_message(update.effective_chat.id, MGS["invalid_count"] + f": {count}")
         return ConversationHandler.END
@@ -221,13 +284,16 @@ async def add(update, context):
     keyboard = [[InlineKeyboardButton(MGS["get_server"], url=f"https://t.me/{title}?start={uuid}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await context.bot.send_message(update.effective_chat.id, esc_markdown(text), reply_markup=reply_markup, parse_mode="MarkdownV2")
+    await message.delete()
     return ConversationHandler.END
 
 async def renew(update, context):
+    if not (update.message or update.callback_query).from_user.id in ADMINS_RW:
+        return ConversationHandler.END
     query = update.callback_query
     await query.answer()
     message = query.message
-    res = read_keyboard(message.reply_markup.inlinke_keyboard)
+    res = read_keyboard(message.reply_markup.inline_keyboard)
     username = message.text
     date = get_date(res[str(DATE)].split(SPLIT)[1])
     if not check_username(username):
@@ -249,12 +315,44 @@ async def renew(update, context):
         await message.delete()
         return ConversationHandler.END
     time_str = timetostr(stamptotime(date))
-    text = f"{MGS['renewd']}\n{MGS['user']} `{username}`\n{MGS['date']}: {time_str}"
+    text = f"{MGS['renewed']}\n{MGS['user']} `{username}`\n{MGS['date']}: {time_str}"
     await context.bot.send_message(update.effective_chat.id, esc_markdown(text), parse_mode="MarkdownV2")
+    await message.delete()
+    return ConversationHandler.END
+
+async def revoke(update, context):
+    if not (update.message or update.callback_query).from_user.id in ADMINS_RW:
+        return ConversationHandler.END
+    query = update.callback_query
+    await query.answer()
+    message = query.message
+    username = message.text
+    res = read_keyboard(message.reply_markup.inline_keyboard)
+    uuid = res[str(UUID)].split(SPLIT)[1]
+    if not check_uuid(uuid):
+        await context.bot.send_message(update.effective_chat.id, MGS["invalid_uuid"] + f": {uuid}")
+        return ConversationHandler.END
+    database = db.session()
+    err = None
+    try:
+        handle_revoke(database, user=username, uuid=uuid)
+    except NoResultFound:
+        err = f"{MGS['error']}: {MGS['user_notexists']}"
+    except Exception as e:
+        err = f"{MGS['error']}: {str(e)}"
+    if err:
+        await context.bot.send_message(update.effective_chat.id, err)
+        await message.delete()
+        return ConversationHandler.END
+    text = f"{MGS['revoked']}\n{MGS['user']} `{username}`\n{MGS['uuid']}: `{uuid}`"
+    await context.bot.send_message(update.effective_chat.id, esc_markdown(text), parse_mode="MarkdownV2")
+    await message.delete()
     return ConversationHandler.END
 
 async def get(update, context):
-    if not check_args(context.args):
+    if not (update.message or update.callback_query).from_user.id in ADMINS_RO:
+        return ConversationHandler.END
+    if len(context.args) == 0:
         await update.message.reply_text(MGS["invalid"])
         return
     username = context.args[0]
@@ -269,18 +367,62 @@ async def get(update, context):
     if err:
         await context.bot.send_message(update.effective_chat.id, err)
         return
-    status = MGS['status_enabled'] if not user.disabled else f"{MGS['status_disabled']}: {MGS.get('reason_' + str(user.disabled), str(user.disabled))}"
     time_str = timetostr(stamptotime(user.expires))
+    status = MGS['status_disabled'] if user.disabled else MGS['status_enabled']
+    reason = f"{MGS.get('reason_' + str(user.disabled), str(user.disabled))}" if user.disabled else ""
     text = '\n'.join((f"{MGS['user']} `{username}`",
-            f"{status}",
+            ': '.join([status, reason]),
             f"{MGS['id']}: {str(user.id)}",
             f"{MGS['count']}: {str(user.count)}",
             f"{MGS['uuid']}: `{user.uuid}`",
             f"{MGS['traffic']}: {readable_size(user.traffic)}",
             f"{MGS['date']}: {time_str}",
             ))
+    if user.disabled:
+        f_row = [InlineKeyboardButton(MGS["enable"], callback_data=f"{str(STATUS)}{SPLIT}{username}{SPLIT}1")]
+        l_row = []
+    else:
+        f_row = [InlineKeyboardButton(MGS["disable"], callback_data=f"{str(STATUS)}{SPLIT}{username}{SPLIT}0")]
+        l_row = [InlineKeyboardButton(MGS["get_server"], url=f"https://t.me/{update.effective_chat.title}?start={uuid}")]
+    keyboard = [
+        f_row,
+        [
+            InlineKeyboardButton(MGS["revoke"], callback_data=f"{str(REVOKE)}{SPLIT}{username}{SPLIT}{user.uuid}"),
+            InlineKeyboardButton(MGS["renew"], callback_data=f"{str(RENEW)}{SPLIT}{username}"),
+        ],
+        l_row,
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(esc_markdown(text), reply_markup=reply_markup, parse_mode="MarkdownV2")
 
-    await update.message.reply_text(esc_markdown(text), parse_mode="MarkdownV2")
+async def status(update, context):
+    query = update.callback_query
+    if not (update.message or query).from_user.id in ADMINS_RW:
+        return ConversationHandler.END
+    if query:
+        await query.answer()
+    args = read_args(context.args or query.data)
+    if len(args) > 2:
+        return ConversationHandler.END
+    message = query.message
+    username = arg[0]
+    reason = ("unknown", None)[int(arg[1])]
+    database = db.session()
+    err = None
+    try:
+        handle_disable(database, user=username, reason=reason)
+    except NoResultFound:
+        err = f"{MGS['error']}: {MGS['user_notexists']}"
+    except Exception as e:
+        err = f"{MGS['error']}: {str(e)}"
+    if err:
+        await context.bot.send_message(update.effective_chat.id, err)
+        await message.delete()
+        return ConversationHandler.END
+    text = f"{MGS["enabled" if reason else "disabled"]}\n{MGS['user']} `{username}`"
+    await context.bot.send_message(update.effective_chat.id, esc_markdown(text), parse_mode="MarkdownV2")
+    await message.delete()
+    return ConversationHandler.END
 
 def main():
     parser = Robot()
@@ -301,51 +443,82 @@ def main():
 
     app = ApplicationBuilder().token(args.yaml["token"]).build()
     filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
+
+    global CHAT, ADMINS_RO, ADMINS_RW
+    CHAT = args.yaml["chat"]
+    ADMINS_WRITE = args.yaml["admins"] if "admins" in args.yaml else []
+    ADMINS_READ = args.yaml["admin_r"] if "admin_r" in args.yaml else []
+    ADMINS_RO = {*ADMINS_READ, *ADMINS_WRITE}
+    ADMINS_RW = {*ADMINS_WRITE}
+    
+    FILTER_CHAT = filters.Chat(CHAT)
+    FILTER_ADMINS = filters.User(ADMINS_RW) if ADMINS_RW else filters.ALL
+    FILTER_ADMINS_R = filters.User(ADMINS_RO) if ADMINS_RO else filters.ALL
+
+    READ_WRITE = (FILTER_CHAT & FILTER_ADMINS)
+    READ_ONLY = (FILTER_CHAT & FILTER_ADMINS_R)
     
     EDIT_COUNT = CallbackQueryHandler(edit_count, "^" + str(COUNT) + "$")
     EDIT_DATE = CallbackQueryHandler(edit_date, "^" + str(DATE) + "$")
     EDIT_UUID = CallbackQueryHandler(edit_uuid, "^" + str(UUID) + "$")
+     
+    EDIT_ENTRY = [MessageHandler(filters.TEXT, edit)]
     
-    FALL_CANCEL = CallbackQueryHandler(cancel, "^" + str(CANCEL) + "$")
-    
-    ADMIN_CHAT = filters.Chat(args.yaml["chat"])
+    FALL_CANCELS = (
+        CallbackQueryHandler(cancel, "^" + str(CANCEL) + "$"),
+        CommandHandler("cancel", cancel)
+        )
+
     app.add_handler(
         ConversationHandler(
-            entry_points=[CommandHandler("add", add_menu, filters=(ADMIN_CHAT))],
+            entry_points=[CommandHandler("add", add_menu, filters=READ_WRITE)],
             states={
                 MENU: [
                     EDIT_COUNT,
                     EDIT_DATE,
                     EDIT_UUID,
                 ],
-                EDIT: [
-                    MessageHandler(filters.TEXT, edit)
-                ],
+                EDIT: EDIT_ENTRY
             },
             fallbacks=[
                 CallbackQueryHandler(add, "^" + str(DONE) + "$"),
-                FALL_CANCEL,
+                *FALL_CANCELS
             ],
         )
     )
     app.add_handler(
         ConversationHandler(
-            entry_points=[CommandHandler("renew", renew_menu, filters=(ADMIN_CHAT))],
+            entry_points=[CommandHandler("revoke", revoke, filters=READ_WRITE), CallbackQueryHandler(revoke_menu, f"^{str(REVOKE)}{SPLIT}")],
+            states={
+                MENU: [
+                    EDIT_UUID,
+                ],
+                EDIT: EDIT_ENTRY
+            },
+            fallbacks=[
+                CallbackQueryHandler(revoke, "^" + str(DONE) + "$"),
+                *FALL_CANCELS
+            ],
+        )
+    )
+    app.add_handler(
+        ConversationHandler(
+            entry_points=[CommandHandler("renew", renew_menu, filters=READ_WRITE), CallbackQueryHandler(renew_menu, f"^{str(RENEW)}{SPLIT}")],
             states={
                 MENU: [
                     EDIT_DATE,                    
                 ],
-                EDIT: [
-                    MessageHandler(filters.TEXT, edit)
-                ],
+                EDIT: EDIT_ENTRY
             },
             fallbacks=[
                 CallbackQueryHandler(renew, "^" + str(DONE) + "$"),
-                FALL_CANCEL,
+                *FALL_CANCELS,
             ],
         )
     )
-    app.add_handler(CommandHandler("get", get, filters=(ADMIN_CHAT)))
+    app.add_handler(CommandHandler("get", get, filters=READ_ONLY))
+    app.add_handler(CommandHandler("cancel", cancel_noneed, filters=(filters.ALL)))
+    app.add_handler(CallbackQueryHandler(
 
     app.run_polling()
 
