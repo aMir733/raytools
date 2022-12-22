@@ -3,6 +3,7 @@ from raytools.db import Database
 from raytools.log import *
 from raytools.func import *
 from raytools.handle import *
+from sqlmodel import select
 from sqlalchemy.exc import *
 import re
 from warnings import filterwarnings
@@ -117,6 +118,9 @@ def read_args(args):
     if isinstance(args, str):
         return args.split(SPLIT)[1:]
     return args
+
+def login(database, tg_id):
+    pass
 
 async def add_menu(update, context):
     if len(context.args) == 0:
@@ -420,6 +424,9 @@ async def status(update, context):
     await message.delete()
     return ConversationHandler.END
 
+async def start(update, context):
+    pass
+
 def main():
     parser = Robot()
     args = parser.parse()
@@ -450,6 +457,7 @@ def main():
     FILTER_CHAT = filters.Chat(CHAT)
     FILTER_ADMINS = filters.User(ADMINS_RW) if ADMINS_RW else filters.ALL
     FILTER_ADMINS_R = filters.User(ADMINS_RO) if ADMINS_RO else filters.ALL
+    FILTERS_PV = filters.ChatType.PRIVATE
 
     READ_WRITE = (FILTER_CHAT & FILTER_ADMINS)
     READ_ONLY = (FILTER_CHAT & FILTER_ADMINS_R)
@@ -502,7 +510,7 @@ def main():
             entry_points=[CommandHandler("renew", renew_menu, filters=READ_WRITE), CallbackQueryHandler(renew_menu, f"^{str(RENEW)}{SPLIT}")],
             states={
                 MENU: [
-                    EDIT_DATE,                    
+                    EDIT_DATE,             
                 ],
                 EDIT: EDIT_ENTRY
             },
@@ -512,6 +520,7 @@ def main():
             ],
         )
     )
+    app.add_handler(CommandHandler("start", start, filters=FILTERS_PV))
     app.add_handler(CommandHandler("get", get, filters=READ_ONLY))
     app.add_handler(CommandHandler("cancel", cancel_noneed, filters=(filters.ALL)))
     app.add_handler(CallbackQueryHandler(status, f"^{str(STATUS)}{SPLIT}"))

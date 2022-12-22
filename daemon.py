@@ -15,10 +15,7 @@ MAX_WARN, MAX_RUN = 5, 8
 def log_tail(filename, locks=()):
     global users
     logging.info("Tailing: " + filename)
-    for line in tail_F(filename):
-        if not line:
-            #time.sleep(0.1)
-            continue
+    for line in tail(open(filename)):
         try:
             user, ip = log_parseline(line)
         except TypeError:
@@ -60,7 +57,7 @@ def check_expire(database, locks=()):
 
 def check_traffic(database, locks=()):
     locks_aq(locks) 
-    handle_traffic(database)
+    handle_update_traffic(database)
     locks_re(locks)
     
 def refresh(database, cfg_path, systemd, db_path, locks=()):

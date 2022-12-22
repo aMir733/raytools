@@ -16,6 +16,8 @@ def init_args():
     parser.parser_refresh.set_defaults(func=handle_refresh)
     parser.parser_addsrv.set_defaults(func=handle_addsrv)
     parser.parser_expired.set_defaults(func=handle_expired)
+    parser.parser_get_traffic.set_defaults(func=handle_get_traffic)
+    parser.parser_register.set_defaults(func=handle_register)
     parser.parser_login.set_defaults(func=handle_login)
     return parser.parse()
 
@@ -30,7 +32,9 @@ def main():
     args.__dict__.pop('yaml') # don't need it yet
     r = args.__dict__.pop('func')(**vars(args), database=session)
     if r:
-        print(r)
+        from pprint import PrettyPrinter
+        pp = PrettyPrinter(indent=4)
+        pp.pprint(r)
 
 if __name__ == '__main__':
     main()

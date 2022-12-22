@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 CONFIGURATION = "/usr/local/etc/xray/raytools.json"
 SYSTEMD = "xray@raytools"
 
-def handle_add(database, username, count, expires, uuid=None, telegram=None):
+def handle_add(database, username, count, expires, uuid=None):
     uuid = uuid if uuid else make_uuid()
     if not isuuid(uuid):
         raise ValueError(f"'{uuid}' is not a valid UUID")
@@ -27,8 +27,6 @@ def handle_add(database, username, count, expires, uuid=None, telegram=None):
     database.commit()
     database.refresh(user)
     refresh_required()
-    if telegram:
-        handle_login(database, user, telegram)
     return user
 
 def handle_get(database, user):
@@ -38,7 +36,7 @@ def handle_get(database, user):
     if isinstance(user, (list, tuple)):
         user, col = user
     user = database.exec(
-            select(User).where(getattr(User, col) == user),
+            select(User).where(getattr(User, col) == user).limit(1),
             ).one()
     return user
 
@@ -152,12 +150,12 @@ def handle_expired(database, expired, disable=False):
         refresh_required()
         return users
 
-def handle_traffic(database):
+def handle_update_traffic(database):
     out = api("statsquery").stdout.decode()
     traffics = parse_traffic(out)
     for id, traffic in traffics.items():
         try:
-            user = database.exec(select(User).where(User.id == int(id))).one()
+            user = database.exec(select(User).where(User.id == int(id)).limit(1)).one()
         except NoResultFound:
             log.error("Could not find user {} in the database. Maybe a refresh is required")
             continue
@@ -167,9 +165,25 @@ def handle_traffic(database):
         database.add(user)
     database.commit()
     api("statsquery", "-reset=true") # Reset the traffic
+    
 
-def handle_login(database, user, telegram):
+def handle_get_traffic(database, top=0, greater=0):
+    if greater:
+        top = 0
+    query = select(User).where(User.traffic >= greater).order_by(User.traffic.desc())
+    query = query.limit(top) if top else query
+    return database.exec(query).all()
+
+def handle_register(database, user, tg_id):
     user = handle_get(database, user)
-    telegram = Telegram(id=telegram, user=user)
+    telegram = Telegram(id=tg_id, user=user)
     database.add(telegram)
     database.commit()
+    
+def handle_login(database, tg_id):
+    tg_id = int(tg_id)
+    telegram = database.exec(
+            select(Telegram).where(Telegram.id == tg_id).limit(1)
+            ).one()
+    user = telegram.user
+    return user

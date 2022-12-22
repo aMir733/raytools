@@ -19,6 +19,7 @@ class Base:
     days_help = "Subscription's duration in days"
     configuration_help = "Source configuration file. You could also use stdin for this -> cat config.json | raytools.py"
     yaml_help = "Path to your yaml configuration file"
+    telegram_help = "User's Telgram ID"
     
     def parse_yaml(self, filepath):
         with open(filepath) as f:
@@ -61,7 +62,7 @@ class Raytools(Base):
             )
         Raytools.subparser = self.parser.add_subparsers(help='Action to take', required=True)
         Raytools.parser_add = self.subparser.add_parser('add', help='Add a new user')
-        Raytools.parser_get = self.subparser.add_parser('get', help='Get user\'s client information')
+        Raytools.parser_get = self.subparser.add_parser('get', help='Get user\'s information')
         Raytools.parser_renew = self.subparser.add_parser('renew', help='Renew user\'s subscription')
         Raytools.parser_revoke = self.subparser.add_parser('revoke', help='Revoke user\'s uuid')
         Raytools.parser_disable = self.subparser.add_parser('disable', help='Disable (deactivate) a user')
@@ -70,7 +71,9 @@ class Raytools(Base):
         Raytools.parser_restart = self.subparser.add_parser('restart', help='Restart ray servers')
         Raytools.parser_addsrv = self.subparser.add_parser('addsrv', help='Add a new server')
         Raytools.parser_expired = self.subparser.add_parser('expired', help='Get a list of users who expire on a particular date')
-        Raytools.parser_login = self.subparser.add_parser('login', help='Login a user to telegram')
+        Raytools.parser_get_traffic = self.subparser.add_parser('get_traffic', help='Get a list of users traffic')
+        Raytools.parser_register = self.subparser.add_parser('register', help='Link a user\'s Telegram ID to their Database ID')
+        Raytools.parser_login = self.subparser.add_parser('login', help='Get user\'s information from their telegram ID')
 
         # global arguments
         self.parser.add_argument('-y', '--yaml', type=str, default=None, help=self.yaml_help)
@@ -85,7 +88,6 @@ class Raytools(Base):
         self.parser_add.add_argument('-c', '--count', type=int, default=1, help='Number of devices allowed for this user')
         self.parser_add.add_argument('-e', '--expires', type=str, required=True, help=self.date_help + ' Subscription\'s end date')
         self.parser_add.add_argument('-u', '--uuid', type=str, default=None, help='UUID to use for this user')
-        self.parser_add.add_argument('-t', '--telegram', type=int, default=None, help='User\'s Telegram ID')
         # get arguments
         self.parser_get.add_argument('user', type=str, help=self.username_help)
         # renew arguments
@@ -107,7 +109,6 @@ class Raytools(Base):
         # refresh arguments
         self.parser_refresh.add_argument('-c', '--configuration', type=str, default=stdin, help=self.configuration_help)
         self.parser_refresh.add_argument('-s', '--systemd', type=str, required=True, help="Xray\'s systemd service name (Just in case)")
-        #self.parser_refresh.add_argument('-2', '--v2ray', action="store_true", default=False, help="Use v2ray as the backed instead of xray")
         # addsrv arguments
         self.parser_addsrv.add_argument(
             'link', type=str, 
@@ -119,9 +120,14 @@ class Raytools(Base):
         # expired argumenrts
         self.parser_expired.add_argument('-e', '--expired', type=str, default="now", help=self.date_help + ' Expire date.')
         self.parser_expired.add_argument('-d', '--disable', action="store_true", default=False, help='Also disable the users who have expired')
+        # get_traffic
+        self.parser_get_traffic.add_argument('-t', '--top', type=int, default=0, help='Limit the list to this number. 0 to show all users')
+        self.parser_get_traffic.add_argument('-g', '--greater', type=int, default=0, help='Show only users who have exceeded this number. Will change \'--top\' to 0 automatically')
+        # register
+        self.parser_register.add_argument('user', type=str, help=self.username_new_help)
+        self.parser_register.add_argument('-t', '--tg-id', type=int, required=True, help=self.telegram_help)
         # login arguments
-        self.parser_login.add_argument('user', type=str, help=self.username_new_help)
-        self.parser_login.add_argument('-t', '--telegram', type=int, required=True, help='User\'s Telegram ID')
+        self.parser_login.add_argument('tg_id', type=str, help=self.telegram_help)
     
 class Daemon(Base):
     def __init__(self):
@@ -142,7 +148,7 @@ class Daemon(Base):
 class Robot(Base):
     def __init__(self):
         Robot.parser = ArgumentParser(
-            description='Telegram robot for your users and yourself',
+            description='Telegram robot for you and your users',
             formatter_class=ArgumentDefaultsHelpFormatter,
             )
         self.parser.add_argument('-y', '--yaml', type=str, default=None, help=self.yaml_help)

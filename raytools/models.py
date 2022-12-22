@@ -11,19 +11,19 @@ class Base(SQLModel):
 class User(Base, table = True):
     username: str = Field(sa_column_kwargs={"unique": True}, index=True)
     count: int
-    uuid: str = Field(sa_column_kwargs={"unique": True})
+    uuid: str = Field(sa_column_kwargs={"unique": True}, index=True)
     expires: int
     traffic: Optional[int] = Field(default=0)
-    disabled: Optional[str] = Field(default=None)
+    disabled: Optional[str] = Field(default=None, index=True)
     telegrams: List["Telegram"] = Relationship(back_populates="user")
 
 class Telegram(SQLModel, table = True):
-    id: int = Field(primary_key=True)
+    id: int = Field(primary_key=True, index=True)
     user_id: int = Field(foreign_key="user.id")
     user: User = Relationship(back_populates="telegrams")
 
 class Server(Base, table = True):
-    name: str = Field(sa_column_kwargs={"unique": True})
+    name: str = Field(sa_column_kwargs={"unique": True}, index=True)
     address: str
     link: str
 
