@@ -24,6 +24,7 @@ from telegram.ext import (
 
 YES, NO = "✅", "❌"
 MENU, EDIT = range(2)
+LOGIN = range(1)
 REVOKE, RENEW = range(2)
 COUNT, DATE, UUID, STATUS, DONE, CANCEL = range(6)
 SPLIT = ": "
@@ -31,10 +32,17 @@ SPLIT = ": "
 MGS = {
     "user": "👤 کاربری",
     "count": "1️⃣ تعداد",
-    "date": "🕓 تاریخ انقضا",
+    "expires": "🕓 تاریخ انقضا",
     "uuid": "🔐 آی دی",
     "traffic": "〽️ ترافیک مصرفی",
     "id": "🔢 آی دی عددی",
+    "history": "🔄 تاریخچه",
+    "date": "تاریخ",
+    "action_added": "اضافه شده",
+    "action_renewed": "تمدید شده",
+    "action_revoked": "تغییر آی دی",
+    "action_disabled": "غیر فعال شده",
+    "action_enabled": "فعال شده",
     "invalid": "نامعتبر",
     "error": "ارور",
     "confirm": "ثبت✅",
@@ -57,6 +65,7 @@ MGS = {
     "reply_count": "تعداد را ریپلای کنید.",
     "reply_date": "تاریخ را ریپلای کنید.",
     "reply_uuid": "آی دی را ریپلای کنید.",
+    "reply_login": "آی دی یا کانفیگ خود را ریپلای کنید",
     "count_one": "هشدار: لطفا برای هر یوزر و دستگاه یک آی دی وارد کنید.",
     "get_server": "دریافت سرور",
     "user_exists": "کاربری در سیستم ثبت شده",
@@ -68,6 +77,11 @@ MGS = {
     "warning_invalidusername": "هشدار! شماره تماس وارد شده درست نمیباشد. برای بازگشت از دکمه لغو استفاده کنید.",
     "menu_revoke": "تغییر یو یو آی دی",
     "for_user": "برای کاربری",
+    "press_button": "لطفا از قسمت کیبورد یک دکمه را انتخاب کنید:",
+    "key_info": "مشخصات اشتراک",
+    "key_servers": "دریافت لیست سرور ها",
+    "key_revoke": "تغییر آی دی",
+    "key_logout": "خروج از حساب کاربری",
 }
 
 def replace_keyboard(keyboard, callback_data, replace):
@@ -119,8 +133,12 @@ def read_args(args):
         return args.split(SPLIT)[1:]
     return args
 
-def login(database, tg_id):
-    pass
+def login(database, user):
+    tg_id = user if isinstance(user, int) else (update.message or update.callback_query).from_user.id
+    try:
+        return handle_login(database, tg_id)
+    except NoResultFound:
+        return False
 
 async def add_menu(update, context):
     if len(context.args) == 0:
@@ -128,7 +146,7 @@ async def add_menu(update, context):
     keyboard = [
             [
                 InlineKeyboardButton(f"{MGS['count']}{SPLIT}1", callback_data=str(COUNT)),
-                InlineKeyboardButton(f"{MGS['date']}{SPLIT}+30", callback_data=str(DATE)),
+                InlineKeyboardButton(f"{MGS['expires']}{SPLIT}+30", callback_data=str(DATE)),
             ],
             [
                 InlineKeyboardButton(f"{MGS['uuid']}{SPLIT}{make_uuid()}", callback_data=str(UUID)),
@@ -151,7 +169,7 @@ async def renew_menu(update, context):
         return ConversationHandler.END
     keyboard = [
         [
-            InlineKeyboardButton(f"{MGS['date']}{SPLIT}+30", callback_data=str(DATE))
+            InlineKeyboardButton(f"{MGS['expires']}{SPLIT}+30", callback_data=str(DATE))
         ],
         [
             InlineKeyboardButton(MGS["confirm"], callback_data=str(DONE)),
@@ -279,8 +297,8 @@ async def add(update, context):
         await context.bot.send_message(update.effective_chat.id, err)
         await message.delete()
         return ConversationHandler.END
-    time_str = timetostr(stamptotime(date))
-    text = f"{MGS['added']}\n{MGS['user']} `{username}`\n{MGS['count']}: {count}\n{MGS['uuid']}: `{uuid}`\n{MGS['date']}: {time_str}"
+    time_str = stamptostr(date)
+    text = f"{MGS['added']}\n{MGS['user']} `{username}`\n{MGS['count']}: {count}\n{MGS['uuid']}: `{uuid}`\n{MGS['expires']}: {time_str}"
     title = update.effective_chat.title
     keyboard = [[InlineKeyboardButton(MGS["get_server"], url=f"https://t.me/{title}?start={uuid}")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -312,8 +330,8 @@ async def renew(update, context):
         await context.bot.send_message(update.effective_chat.id, err)
         await message.delete()
         return ConversationHandler.END
-    time_str = timetostr(stamptotime(date))
-    text = f"{MGS['renewed']}\n{MGS['user']} `{username}`\n{MGS['date']}: {time_str}"
+    time_str = stamptostr(date)
+    text = f"{MGS['renewed']}\n{MGS['user']} `{username}`\n{MGS['expires']}: {time_str}"
     await context.bot.send_message(update.effective_chat.id, esc_markdown(text), parse_mode="MarkdownV2")
     await message.delete()
     return ConversationHandler.END
@@ -366,16 +384,22 @@ async def get(update, context):
         await context.bot.send_message(update.effective_chat.id, err)
         return
     username = user.username
-    time_str = timetostr(stamptotime(user.expires))
+    time_str = stamptostr(user.expires)
     status = MGS['status_disabled'] if user.disabled else MGS['status_enabled']
-    reason = f"{MGS.get('reason_' + str(user.disabled), str(user.disabled))}" if user.disabled else ""
+    reason = f"{MGS.get('reason_%s' % str(user.disabled), str(user.disabled))}" if user.disabled else ""
+    space = '----------------------'
+    history = f"\n{space}\n".join([
+        f"{MGS['date']}: {stamptostr(i.date)}\n{MGS.get('action_%s' % i.action, i.action)}: {stamptostr(int(i.data)) if istime(i.data) else f'`{i.data}`'}" for i in user.actions
+        ])
     text = '\n'.join((f"{MGS['user']} `{username}`",
             ': '.join([status, reason]),
             f"{MGS['id']}: {str(user.id)}",
             f"{MGS['count']}: {str(user.count)}",
             f"{MGS['uuid']}: `{user.uuid}`",
             f"{MGS['traffic']}: {readable_size(user.traffic)}",
-            f"{MGS['date']}: {time_str}",
+            f"{MGS['expires']}: {time_str}",
+            "",
+            f"{MGS['history']}: \n{history}",
             ))
     if user.disabled:
         f_row = [InlineKeyboardButton(MGS["enable"], callback_data=f"{str(STATUS)}{SPLIT}{username}{SPLIT}1")]
@@ -409,7 +433,10 @@ async def status(update, context):
     database = db.session()
     err = None
     try:
-        handle_disable(database, user=username, reason=reason)
+        if reason:
+            handle_disable(database, user=username, reason=reason)
+        else:
+            handle_enable(database, user=username)
     except NoResultFound:
         err = f"{MGS['error']}: {MGS['user_notexists']}"
     except Exception as e:
@@ -424,8 +451,25 @@ async def status(update, context):
     await message.delete()
     return ConversationHandler.END
 
+async def buttons(update, context):
+    reply_keyboard = [
+        [MGS["key_servers"], MGS["key_info"]],
+        [MGS["key_logout"], MGS["key_revoke"]],
+    ]
+    reply_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True)
+    text = MGS["press_button"]
+    await context.bot.send_message(update.effective_chat.id, text, reply_markup=reply_markup)
+
 async def start(update, context):
-    pass
+    database = db.session()
+    tg_id = (update.message or update.callback_query).from_user.id
+    user = login(database, tg_id)
+    if user:
+        await buttons(update, context)
+        return ConversationHandler.END
+    text = MGS["reply_login"]
+    await context.bot.send_message(update.effective_chat.id, text)
+    return LOGIN
 
 def main():
     parser = Robot()
@@ -473,6 +517,20 @@ def main():
         CommandHandler("cancel", cancel)
         )
 
+    app.add_handler(
+        ConversationHandler(
+            entry_points=[CommandHandler("start", start, filters=FILTERS_PV)],
+            states={
+                LOGIN: [
+                    MessageHandler(filters.ALL, login)
+                    ],
+            },
+            fallbacks=[
+                CallbackQueryHandler(add, "^" + str(DONE) + "$"),
+                *FALL_CANCELS,
+            ]
+        )
+    )
     app.add_handler(
         ConversationHandler(
             entry_points=[CommandHandler("add", add_menu, filters=READ_WRITE)],

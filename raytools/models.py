@@ -15,7 +15,15 @@ class User(Base, table = True):
     expires: int
     traffic: Optional[int] = Field(default=0)
     disabled: Optional[str] = Field(default=None, index=True)
+    actions: List["History"] = Relationship(back_populates="user")
     telegrams: List["Telegram"] = Relationship(back_populates="user")
+    
+class History(Base, table = True):
+    date: int
+    action: str
+    data: Optional[str] = Field(default=None)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    user: User = Relationship(back_populates="actions")
 
 class Telegram(SQLModel, table = True):
     id: int = Field(primary_key=True, index=True)

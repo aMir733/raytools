@@ -397,6 +397,12 @@ def isuuid(uuid):
         return False
     return True
 
+def istime(date): # works for only 3 years!!! :))))
+    try:
+        return 1600000000 < int(date) < 1800000000
+    except:
+        return False
+
 def timenow():
     return datetime.now(tz=ZoneInfo("Asia/Tehran")).replace(microsecond=0)
 
@@ -419,6 +425,9 @@ def strtotime(date):
         raise ValueError(f"Invalid isoformat string: {date}")
     y, m, d = list(map(int, date.split('-')))
     return jdate(y, m, d)
+
+def stamptostr(date):
+    return timetostr(stamptotime(date))
 
 def timetostr(date):
     if not isinstance(date, datetime):

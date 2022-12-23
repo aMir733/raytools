@@ -15,15 +15,31 @@ SYSTEMD = "xray@raytools"
 
 def handle_add(database, username, count, expires, uuid=None):
     uuid = uuid if uuid else make_uuid()
+    expires = parse_date(expires)
+    now = timetostamp(timenow())
     if not isuuid(uuid):
         raise ValueError(f"'{uuid}' is not a valid UUID")
     user = User(
-            username=username,
-            count=count,
-            uuid=uuid,
-            expires=parse_date(expires),
-            )
+        username=username,
+        count=count,
+        uuid=uuid,
+        expires=expires,
+    )
+    history1 = History(
+        date=now,
+        action="added",
+        data=uuid,
+        user=user,
+    )
+    history2 = History(
+        date=now,
+        action="renewed",
+        data=expires,
+        user=user,
+    )
     database.add(user)
+    database.add(history1)
+    database.add(history2)
     database.commit()
     database.refresh(user)
     refresh_required()
@@ -41,13 +57,21 @@ def handle_get(database, user):
     return user
 
 def handle_renew(database, user, expires, reset=False):
+    expires = parse_date(expires)
     user = handle_get(database, user)
-    user.expires = parse_date(expires)
+    user.expires = expires
     if user.disabled == "expired":
         user.disabled = None
     if reset:
         user.traffic = 0
+    history = History(
+        date=timetostamp(timenow()),
+        action="renewed",
+        data=expires,
+        user=user,
+    )
     database.add(user)
+    database.add(history)
     database.commit()
     database.refresh(user)
     refresh_required()
@@ -61,7 +85,14 @@ def handle_revoke(database, user, uuid=None):
     user.uuid = uuid
     if user.disabled == "count":
         user.disabled = None
+    history = History(
+        date=timetostamp(timenow()),
+        action="revoked",
+        data=uuid,
+        user=user,
+    )
     database.add(user)
+    database.add(history)
     database.commit()
     database.refresh(user)
     refresh_required()
@@ -70,18 +101,39 @@ def handle_revoke(database, user, uuid=None):
 def handle_disable(database, user, reason="disabled"):
     user = handle_get(database, user)
     user.disabled = reason
+    history = History(
+        date=timetostamp(timenow()),
+        action="disabled",
+        data=reason,
+        user=user,
+    )
     database.add(user)
+    database.add(history)
     database.commit()
     database.refresh(user)
     refresh_required()
     return user
 
 def handle_enable(database, user, reset=False):
+    now = timetostamp(timenow())
     user = handle_get(database, user)
     user.disabled = None
     if reset:
+        history2 = History(
+            date=now,
+            action="reset",
+            data=user.traffic,
+            user=user,
+        )
+        database.add(history2)
         user.traffic = 0
+    history1 = History(
+        date=now,
+        action="enabled",
+        user=user,
+    )
     database.add(user)
+    database.add(history1)
     database.commit()
     database.refresh(user)
     refresh_required()
@@ -144,7 +196,13 @@ def handle_expired(database, expired, disable=False):
     if users and disable:
         log.warning("Disabling {} users".format(len(users)))
         for user in users:
+            history = History(
+                date=timetostamp(timenow()),
+                action="expired",
+                user=user,
+            )
             user.disabled = "expired"
+            database.add(history)
             database.add(user)
         database.commit()
         refresh_required()
@@ -165,7 +223,6 @@ def handle_update_traffic(database):
         database.add(user)
     database.commit()
     api("statsquery", "-reset=true") # Reset the traffic
-    
 
 def handle_get_traffic(database, top=0, greater=0):
     if greater:
@@ -177,7 +234,13 @@ def handle_get_traffic(database, top=0, greater=0):
 def handle_register(database, user, tg_id):
     user = handle_get(database, user)
     telegram = Telegram(id=tg_id, user=user)
+    history = History(
+        date=timetostamp(timenow()),
+        action="registered",
+        user=user,
+    )
     database.add(telegram)
+    database.add(history)
     database.commit()
     
 def handle_login(database, tg_id):
