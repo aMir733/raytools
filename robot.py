@@ -212,11 +212,15 @@ async def revoke_menu(update, context):
     return MENU
 
 async def login(update, context):
-    print(update.message)
-    text = getattr(update.message, "text", getattr(update.message, "caption"))
+    text = getattr(update.message, "text", None) or getattr(update.message, "caption", None)
     if not text:
         await context.bot.send_message(update.effective_chat.id, MGS['invalid_message'])
         return
+    link = readlink(text)
+    if link:
+        text = link
+    print(text)
+    
 
 async def edit(update, context):
     query = context.user_data["query"]

@@ -170,19 +170,28 @@ def writelink(
             b64encode(link.encode()).decode() if protocol == "vmess" else link,
             )
 
-def readlink(
-        link,
-        ):
+def readlink(link):
     matched = matchlink(link)
+    if not matched:
+        return
     return (
-            matched[0],
-            b64decode(matched[1]).decode() if matched[0] == "vmess" else matched[1]
+            matched[1],
+            b64decode(matched[2]).decode() if matched[1] == "vmess" else matched[2]
             )
+    
+#def parselink(link):
+#    if isinstance(link, str):
+#        link = readlink(link)
+#    if link[0] == "vmess": # Handle vmess link
+#        try:
+#            return jsonloads(link[1])
+#        except:
+#            return
+#    if link[0] == "vless": # Handle vless link
+#        
+        
 
-def formatlink(
-        link,
-        **kwargs,
-        ):
+def formatlink(link, **kwargs):
     if not isinstance(link, str):
         raise TypeError("Invalid Type")
     protocol, link = readlink(link)
@@ -522,16 +531,10 @@ def isvalidcfg(cfg):
     return (True, "All good!")
 
 
-def islink(link):
-    if not isinstance(link, str):
-        return False
-    matched = matchlink(link, ["vmess", "vless"])
-    if len(matched) != 2:
-        return False
-
-def matchlink(link, protocols):
+def matchlink(link):
+    protocols=("vmess", "vless")
     res = recompile(r'^(' + '|'.join(protocols) + r')://(.+)').match(link)
-    return res.groups() if res else ()
+    return res if res else None
 
 def _handle_http_inb(ss, xs):
     final = {}
