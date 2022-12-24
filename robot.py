@@ -38,11 +38,12 @@ MGS = {
     "id": "🔢 آی دی عددی",
     "history": "🔄 تاریخچه",
     "date": "تاریخ",
-    "action_added": "اضافه شده",
-    "action_renewed": "تمدید شده",
+    "action_added": "کاربری جدید",
+    "action_renewed": "تغییر تاریخ",
     "action_revoked": "تغییر آی دی",
-    "action_disabled": "غیر فعال شده",
-    "action_enabled": "فعال شده",
+    "action_disabled": "غیر فعال شد",
+    "action_enabled": "فعال شد",
+    "action_reset": "ریست ترافیک",
     "invalid": "نامعتبر",
     "error": "ارور",
     "confirm": "ثبت✅",
@@ -58,10 +59,12 @@ MGS = {
     "disable": "غیر فعال",
     "enabled": "✅فعال شد",
     "disabled": "❌غیر فعال شد",
+    "since": "از تاریخ",
     "invalid_user": "کاربری نامعتبر",
     "invalid_count": "تعداد نامعتبر",
     "invalid_date": "تاریخ نامعتبر",
     "invalid_uuid": "آی دی نامعتبر",
+    "invalid_message": "پیام نامعتبر",
     "reply_count": "تعداد را ریپلای کنید.",
     "reply_date": "تاریخ را ریپلای کنید.",
     "reply_uuid": "آی دی را ریپلای کنید.",
@@ -106,7 +109,10 @@ def read_keyboard(keyboard):
     return final
 
 def esc_markdown(text):
-    return text.replace(".", "\.").replace("_", "\_").replace("-", "\-")
+    rep = "._-()="
+    for ch in rep:
+        text = text.replace(ch, '\\' + ch)        
+    return text
 
 def check_username(username):
     return re.match(r"^[0-9]{11}(\-[0-9]+)?$", username)
@@ -133,12 +139,13 @@ def read_args(args):
         return args.split(SPLIT)[1:]
     return args
 
-def login(database, user):
-    tg_id = user if isinstance(user, int) else (update.message or update.callback_query).from_user.id
+def get_user(database, tg_id):
+    tg_id = tg_id if isinstance(tg_id, int) else (update.message or update.callback_query).from_user.id
+    tg_id = int(tg_id)
     try:
         return handle_login(database, tg_id)
     except NoResultFound:
-        return False
+        return
 
 async def add_menu(update, context):
     if len(context.args) == 0:
@@ -203,6 +210,13 @@ async def revoke_menu(update, context):
     text = args[0]
     await context.bot.send_message(update.effective_chat.id, text, reply_markup=reply_markup)
     return MENU
+
+async def login(update, context):
+    print(update.message)
+    text = getattr(update.message, "text", getattr(update.message, "caption"))
+    if not text:
+        await context.bot.send_message(update.effective_chat.id, MGS['invalid_message'])
+        return
 
 async def edit(update, context):
     query = context.user_data["query"]
@@ -376,6 +390,7 @@ async def get(update, context):
     err = None
     try:
         user = handle_get(database, user=username)
+        last = handle_last_reset(database, user)
     except NoResultFound:
         err = f"{MGS['error']}: {MGS['user_notexists']}"
     except Exception as e:
@@ -387,19 +402,20 @@ async def get(update, context):
     time_str = stamptostr(user.expires)
     status = MGS['status_disabled'] if user.disabled else MGS['status_enabled']
     reason = f"{MGS.get('reason_%s' % str(user.disabled), str(user.disabled))}" if user.disabled else ""
-    space = '----------------------'
+    space = '-' * 34
     history = f"\n{space}\n".join([
         f"{MGS['date']}: {stamptostr(i.date)}\n{MGS.get('action_%s' % i.action, i.action)}: {stamptostr(int(i.data)) if istime(i.data) else f'`{i.data}`'}" for i in user.actions
         ])
+    if last:
+        last = f" ({MGS['since']}: {stamptostr(last.date)})"
     text = '\n'.join((f"{MGS['user']} `{username}`",
             ': '.join([status, reason]),
             f"{MGS['id']}: {str(user.id)}",
             f"{MGS['count']}: {str(user.count)}",
             f"{MGS['uuid']}: `{user.uuid}`",
-            f"{MGS['traffic']}: {readable_size(user.traffic)}",
+            f"{MGS['traffic']}: {readable_size(user.traffic)}{last if last else ''}",
             f"{MGS['expires']}: {time_str}",
-            "",
-            f"{MGS['history']}: \n{history}",
+            (f"\n{MGS['history']}: \n{space}\n{history}\n{space}") if history else "",
             ))
     if user.disabled:
         f_row = [InlineKeyboardButton(MGS["enable"], callback_data=f"{str(STATUS)}{SPLIT}{username}{SPLIT}1")]
@@ -451,7 +467,7 @@ async def status(update, context):
     await message.delete()
     return ConversationHandler.END
 
-async def buttons(update, context):
+async def keyb_mainmenu(update, context):
     reply_keyboard = [
         [MGS["key_servers"], MGS["key_info"]],
         [MGS["key_logout"], MGS["key_revoke"]],
@@ -463,9 +479,9 @@ async def buttons(update, context):
 async def start(update, context):
     database = db.session()
     tg_id = (update.message or update.callback_query).from_user.id
-    user = login(database, tg_id)
+    user = get_user(database, tg_id)
     if user:
-        await buttons(update, context)
+        await keyb_mainmenu(update, context)
         return ConversationHandler.END
     text = MGS["reply_login"]
     await context.bot.send_message(update.effective_chat.id, text)
@@ -523,7 +539,7 @@ def main():
             states={
                 LOGIN: [
                     MessageHandler(filters.ALL, login)
-                    ],
+                ],
             },
             fallbacks=[
                 CallbackQueryHandler(add, "^" + str(DONE) + "$"),

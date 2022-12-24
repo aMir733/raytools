@@ -406,6 +406,9 @@ def istime(date): # works for only 3 years!!! :))))
 def timenow():
     return datetime.now(tz=ZoneInfo("Asia/Tehran")).replace(microsecond=0)
 
+def stampnow():
+    return timetostamp(timenow())
+
 def timemake(date):
     return datetime(*[int(i) for i in date])
 

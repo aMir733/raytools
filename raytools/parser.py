@@ -72,6 +72,7 @@ class Raytools(Base):
         Raytools.parser_addsrv = self.subparser.add_parser('addsrv', help='Add a new server')
         Raytools.parser_expired = self.subparser.add_parser('expired', help='Get a list of users who expire on a particular date')
         Raytools.parser_get_traffic = self.subparser.add_parser('get_traffic', help='Get a list of users traffic')
+        Raytools.parser_reset = self.subparser.add_parser('reset', help='Reset user\'s traffic')
         Raytools.parser_register = self.subparser.add_parser('register', help='Link a user\'s Telegram ID to their Database ID')
         Raytools.parser_login = self.subparser.add_parser('login', help='Get user\'s information from their telegram ID')
 
@@ -123,6 +124,8 @@ class Raytools(Base):
         # get_traffic
         self.parser_get_traffic.add_argument('-t', '--top', type=int, default=0, help='Limit the list to this number. 0 to show all users')
         self.parser_get_traffic.add_argument('-g', '--greater', type=int, default=0, help='Show only users who have exceeded this number. Will change \'--top\' to 0 automatically')
+        # reset
+        self.parser_reset.add_argument('user', type=str, help=self.username_help)
         # register
         self.parser_register.add_argument('user', type=str, help=self.username_new_help)
         self.parser_register.add_argument('-t', '--tg-id', type=int, required=True, help=self.telegram_help)

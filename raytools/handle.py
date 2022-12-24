@@ -16,7 +16,7 @@ SYSTEMD = "xray@raytools"
 def handle_add(database, username, count, expires, uuid=None):
     uuid = uuid if uuid else make_uuid()
     expires = parse_date(expires)
-    now = timetostamp(timenow())
+    now = stampnow()
     if not isuuid(uuid):
         raise ValueError(f"'{uuid}' is not a valid UUID")
     user = User(
@@ -56,16 +56,14 @@ def handle_get(database, user):
             ).one()
     return user
 
-def handle_renew(database, user, expires, reset=False):
+def handle_renew(database, user, expires):
     expires = parse_date(expires)
     user = handle_get(database, user)
     user.expires = expires
     if user.disabled == "expired":
         user.disabled = None
-    if reset:
-        user.traffic = 0
     history = History(
-        date=timetostamp(timenow()),
+        date=stampnow(),
         action="renewed",
         data=expires,
         user=user,
@@ -86,7 +84,7 @@ def handle_revoke(database, user, uuid=None):
     if user.disabled == "count":
         user.disabled = None
     history = History(
-        date=timetostamp(timenow()),
+        date=stampnow(),
         action="revoked",
         data=uuid,
         user=user,
@@ -102,7 +100,7 @@ def handle_disable(database, user, reason="disabled"):
     user = handle_get(database, user)
     user.disabled = reason
     history = History(
-        date=timetostamp(timenow()),
+        date=stampnow(),
         action="disabled",
         data=reason,
         user=user,
@@ -114,26 +112,17 @@ def handle_disable(database, user, reason="disabled"):
     refresh_required()
     return user
 
-def handle_enable(database, user, reset=False):
-    now = timetostamp(timenow())
+def handle_enable(database, user):
+    now = stampnow()
     user = handle_get(database, user)
-    user.disabled = None
-    if reset:
-        history2 = History(
-            date=now,
-            action="reset",
-            data=user.traffic,
-            user=user,
-        )
-        database.add(history2)
-        user.traffic = 0
-    history1 = History(
-        date=now,
+    history = History(
+        date=stampnow(),
         action="enabled",
         user=user,
     )
+    user.disabled = None
     database.add(user)
-    database.add(history1)
+    database.add(history)
     database.commit()
     database.refresh(user)
     refresh_required()
@@ -190,14 +179,14 @@ def handle_addsrv(database, link, inbound_index, name, address):
 
 def handle_expired(database, expired, disable=False):
     date = parse_date(expired)
-    log.info("Showing users that expire before " + str(stamptotime(date)))
+    log.info("Users who expire before " + str(stamptotime(date)))
     users = database.exec(select(User).where(User.expires < date, User.disabled == None)).all()
     log.info("Count: %s" % len(users))
     if users and disable:
         log.warning("Disabling {} users".format(len(users)))
         for user in users:
             history = History(
-                date=timetostamp(timenow()),
+                date=stampnow(),
                 action="expired",
                 user=user,
             )
@@ -223,6 +212,32 @@ def handle_update_traffic(database):
         database.add(user)
     database.commit()
     api("statsquery", "-reset=true") # Reset the traffic
+    
+def handle_last_history(database, user, action):
+    user = handle_get(database, user)
+    history = database.exec(
+        select(History).where(History.user_id == user.id, History.action == action).order_by(History.date.desc()).limit(1)
+    ).first()
+    return history
+
+def handle_reset(database, user):
+    user = handle_get(database, user)
+    log.info(f"Current traffic: {user.traffic}")
+    history = History(
+            date=stampnow(),
+            action="reset",
+            data=user.traffic,
+            user=user,
+        )
+    user.traffic = 0
+    database.add(user)
+    database.add(history)
+    database.commit()
+
+def handle_last_reset(database, user):
+    user = handle_get(database, user)
+    last = handle_last_history(database, user, "reset")
+    return last if last else handle_last_history(database, user, "added")
 
 def handle_get_traffic(database, top=0, greater=0):
     if greater:
@@ -235,7 +250,7 @@ def handle_register(database, user, tg_id):
     user = handle_get(database, user)
     telegram = Telegram(id=tg_id, user=user)
     history = History(
-        date=timetostamp(timenow()),
+        date=stampnow(),
         action="registered",
         user=user,
     )

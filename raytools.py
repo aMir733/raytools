@@ -17,6 +17,7 @@ def init_args():
     parser.parser_addsrv.set_defaults(func=handle_addsrv)
     parser.parser_expired.set_defaults(func=handle_expired)
     parser.parser_get_traffic.set_defaults(func=handle_get_traffic)
+    parser.parser_reset.set_defaults(func=handle_reset)
     parser.parser_register.set_defaults(func=handle_register)
     parser.parser_login.set_defaults(func=handle_login)
     return parser.parse()
