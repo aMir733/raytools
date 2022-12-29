@@ -87,6 +87,21 @@ MGS = {
     "key_logout": "خروج از حساب کاربری",
 }
 
+REP = {
+    '۰': '0',
+    '۱': '1',
+    '۲': '2',
+    '۳': '3',
+    '۴': '4',
+    '۵': '5',
+    '۶': '6',
+    '۷': '7',
+    '۸': '8',
+    '۹': '9',
+}
+
+ESCMARK = "._-()="
+
 def replace_keyboard(keyboard, callback_data, replace):
     final = []
     for i in keyboard:
@@ -109,9 +124,13 @@ def read_keyboard(keyboard):
     return final
 
 def esc_markdown(text):
-    rep = "._-()="
-    for ch in rep:
+    for ch in ESCMARK:
         text = text.replace(ch, '\\' + ch)        
+    return text
+
+def rep_ch(text):
+    for item, value in REP.items():
+        text = text.replace(item, value)
     return text
 
 def check_username(username):
@@ -389,7 +408,7 @@ async def get(update, context):
     if len(context.args) == 0:
         await update.message.reply_text(MGS["invalid"])
         return
-    username = context.args[0]
+    username = rep_ch(context.args[0])
     database = db.session()
     err = None
     try:
