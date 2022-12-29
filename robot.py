@@ -239,7 +239,6 @@ async def login(update, context):
     if link:
         text = link
     print(text)
-    
 
 async def edit(update, context):
     query = context.user_data["query"]
