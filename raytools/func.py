@@ -63,7 +63,7 @@ def tail_F(some_file): # https://stackoverflow.com/a/12523119
 def log_parseline(line):
     try:
         ip, mode, user = [line.strip().split(' ')[i] for i in [2, 3, 6]]
-    except (KeyError, ValueError):
+    except:
         return
     if mode != "accepted":
         return
