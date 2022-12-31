@@ -46,7 +46,8 @@ def check_count(database, locks=()):
         log.debug(warnings)
         if warnings[user] >= MAX_WARN:
             logging.warning("DISCONNECT/COUNT: '{}'".format(user))
-            log.info(handle_disable(database, (int(user), "id"), reason="count"))
+            handle_disable(database, (int(user), "id"), reason="count")
+            warnings.pop(user)
     users = {}
     locks_re(locks)
 

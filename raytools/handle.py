@@ -98,6 +98,8 @@ def handle_revoke(database, user, uuid=None):
 
 def handle_disable(database, user, reason="disabled"):
     user = handle_get(database, user)
+    if user.disabled == reason:
+        return user
     user.disabled = reason
     history = History(
         date=stampnow(),
