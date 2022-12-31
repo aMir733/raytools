@@ -48,7 +48,7 @@ MGS = {
     "error": "ارور",
     "confirm": "ثبت✅",
     "added": "ثبت شد✅",
-    "renewed": "تمدید شد✅",
+    "renewed": "تاریخ تغییر یافت✅",
     "revoked": "✅آی دی تغییر یافت",
     "cancel": "لغو❌",
     "canceled": "لغو شد.",
