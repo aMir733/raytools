@@ -14,6 +14,8 @@ import logging
 
 log = logging.getLogger(__name__)
 
+RE_UUID = r"[0-9a-f]{8}\b-[0-9a-f]{4}\b-[0-9a-f]{4}\b-[0-9a-f]{4}\b-[0-9a-f]{12}"
+
 def locks_aq(locks):
     for index, lock in enumerate(locks):
         #log.debug("Acquiring lock %s" % index)
@@ -178,6 +180,10 @@ def readlink(link):
             matched[1],
             b64decode(matched[2]).decode() if matched[1] == "vmess" else matched[2]
             )
+    
+def finduuid(text):
+    pass
+    
     
 #def parselink(link):
 #    if isinstance(link, str):

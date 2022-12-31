@@ -10,7 +10,7 @@ from threading import Lock
 from hashlib import md5
 import logging
 
-MAX_WARN, MAX_RUN = 5, 8
+MAX_WARN, MAX_RUN = 8, 8
 
 def log_tail(filename, locks=()):
     global users
